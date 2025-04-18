@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.27)
-project(stream_vcmax_without_urban)
+project(stream)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 include_directories(.)
 
-add_executable(stream_vcmax_without_urban
+add_executable(stream
         main.cpp
         aerodynamic.h
         biochemical.cpp
@@ -53,6 +53,6 @@ add_executable(stream_vcmax_without_urban
 
 find_package(GDAL CONFIG REQUIRED)
 
-target_link_libraries(stream_vcmax_without_urban PRIVATE GDAL::GDAL)
+target_link_libraries(stream PRIVATE GDAL::GDAL)
 
 
