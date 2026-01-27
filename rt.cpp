@@ -975,7 +975,9 @@ void RT::netrad_shortwave(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<P
             netrad.diffuseVrad_soil += diffuse_soil;  // 更新土壤散射辐射
             netrad.directVrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - lrho - ltau);  // 更新叶片直接辐射
             netrad.directVrad_soil += (Esun / cos(sza * PI / 180.0)) * (1 - rs);  // 更新土壤直接辐射
-
+            // netrad.directVrad_leaf += Esun * (1 - lrho - ltau);  // 更新叶片直接辐射
+            // netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
+            
             // 如果波长在可见光范围内（400-700nm），则计算辐射强度
             if (wl >= 400 && wl <= 700) {
                 netrad.directPrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - lrho - ltau) * wl * (1e-3) / (A * H * C);  // 叶片直接辐射强度
@@ -983,8 +985,10 @@ void RT::netrad_shortwave(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<P
             }
         } else {
             // 如果LAI为0，只有土壤辐射
-            netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
-            netrad.diffuseVrad_soil += Esky * (1 - rs);  // 更新土壤散射辐射
+            netrad.directVrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - rs);  // 更新叶片直接辐射
+            netrad.directVrad_soil += (Esky / cos(sza * PI / 180.0)) * (1 - rs);  // 更新土壤直接辐射
+            // netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
+            // netrad.diffuseVrad_soil += Esky * (1 - rs);  // 更新土壤散射辐射
         }
     }
 }
