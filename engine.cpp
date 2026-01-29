@@ -76,11 +76,10 @@ int runpixel(std::shared_ptr<Model> model, std::shared_ptr<Defined> defined, std
         switch (pixelio->m_pInputset->canopy.type)
         {
         case 13:
-            m_rt.netrad_shortwave_urban(defined, pixelio); // 计算短波净辐射
-            m_rt.netrad_longwave_urban(defined, pixelio); // 计算长波净辐射
-
+            m_rt.netrad_shortwave_urban(defined, pixelio);
             for (kiter = 0; kiter < N_ITER; kiter++)
             {
+                m_rt.netrad_longwave_urban(defined, pixelio);
                 m_aero.aeresist_urban(defined, pixelio);
                 m_bio.suresist_urban(defined, pixelio);
                 m_evapo.evapotranspiration_urban(pixelio);
@@ -92,10 +91,10 @@ int runpixel(std::shared_ptr<Model> model, std::shared_ptr<Defined> defined, std
             }
             break;
         default:
-            m_rt.netrad_shortwave(defined, pixelio); // 计算短波净辐射
-            m_rt.netrad_longwave(defined, pixelio); // 计算长波净辐射
+            m_rt.netrad_shortwave(defined, pixelio);
             for (kiter = 0; kiter < N_ITER; kiter++)
             {
+                m_rt.netrad_longwave(defined, pixelio);
                 m_aero.aeresist(defined, pixelio);
                 m_bio.suresist(defined, pixelio);
                 m_evapo.evapotranspiration(pixelio);
