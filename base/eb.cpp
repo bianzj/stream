@@ -52,7 +52,7 @@ bool EB::rebalance(std::shared_ptr<PixelIO> pixelio)
         thermal.Tleafsunlit = Told + wc * res / ((RHOA * CP) / raa + RHOA * lambda * e_to_q * s / (raa + rss) + 4.0 * emis * SIGMASB * std::pow(Told, 3));
 
         // 如果能量平衡的剩余量超过预设的辐射阈值，则表明系统不稳定
-        if (res > RAD_THRESHOLD) isclosed = false;
+        if(std::abs(res) > RAD_THRESHOLD) isclosed = false;
 
         // 处理阴影叶片部分
         raa = resist.raa_leaf;  // 叶片的气动阻力
@@ -75,7 +75,7 @@ bool EB::rebalance(std::shared_ptr<PixelIO> pixelio)
         thermal.Tleafshaded = Told + wc * res / ((RHOA * CP) / raa + RHOA * lambda * e_to_q * s / (raa + rss) + 4.0 * emis * SIGMASB * std::pow(Told, 3));
 
         // 如果能量平衡的剩余量超过预设的辐射阈值，则表明系统不稳定
-        if (res > RAD_THRESHOLD) isclosed = false;
+        if(std::abs(res) > RAD_THRESHOLD) isclosed = false;
     }
 
     // 处理阳光照射的土壤部分
@@ -96,10 +96,17 @@ bool EB::rebalance(std::shared_ptr<PixelIO> pixelio)
     emis = 1.0 - spectral.soilRefl_ir;  // 土壤的发射率
 
     // 更新阳光照射土壤的温度 (Kelvin)
-    thermal.Tsoilsunlit = Told + wc*res/((RHOA*CP)/raa + RHOA*lambda*e_to_q*s/(raa+rss) + 4.0*emis*SIGMASB*std::pow(Told,3));
+    float cs = pixelio->m_pInputset->soilset.cs;   // 土壤比热容
+    float rhos = pixelio->m_pInputset->soilset.rhos; // 土壤密度
+    float lambdas = pixelio->m_pInputset->soilset.lambdas; // 土壤导热系数
+    float GAM = std::sqrt(cs * rhos * lambdas);
+    const float Deltat = 3600.0f; // 1 小时 = 3600.0 秒
+    float dG_term = (GAM * 2.0f) / (std::sqrt(M_PI) * std::sqrt(Deltat));
 
+    thermal.Tsoilsunlit = Told + wc * res / ((RHOA * CP) / raa + RHOA * lambda * e_to_q * s / (raa + rss) + 4.0 * emis *
+                                             SIGMASB * std::pow(Told, 3) + dG_term);
     // 如果能量平衡的剩余量超过预设的辐射阈值，则表明系统不稳定
-    if(res > RAD_THRESHOLD) isclosed = false;
+    if(std::abs(res) > RAD_THRESHOLD) isclosed = false;
 
     // 处理阴影土壤部分
     raa = resist.raa_soil;  // 土壤的气动阻力
@@ -119,10 +126,11 @@ bool EB::rebalance(std::shared_ptr<PixelIO> pixelio)
     emis = 1.0 - spectral.soilRefl_ir;  // 土壤的发射率
 
     // 更新阴影土壤的温度 (Kelvin)
-    thermal.Tsoilshaded = Told + wc*res/((RHOA*CP)/raa + RHOA*lambda*e_to_q*s/(raa+rss) + 4.0*emis*SIGMASB*std::pow(Told,3));
+    thermal.Tsoilshaded = Told + wc * res / ((RHOA * CP) / raa + RHOA * lambda * e_to_q * s / (raa + rss) +
+                                             4.0 * emis * SIGMASB * std::pow(Told, 3) + dG_term);
 
     // 如果能量平衡的剩余量超过预设的辐射阈值，则表明系统不稳定
-    if(res > RAD_THRESHOLD) isclosed = false;
+    if(std::abs(res) > RAD_THRESHOLD) isclosed = false;
 
     // 检查是否超过温度阈值，如果超过，则将温度重置为默认值，并将系统标记为不稳定
     if(thermal.Tsoilsunlit > TMAX_THRESHOLD || thermal.Tleafsunlit > TMAX_THRESHOLD)

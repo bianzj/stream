@@ -98,14 +98,24 @@ void Aerodynamic::aeresist(std::shared_ptr<Defined> defined, std::shared_ptr<Pix
         resist.raa_soil = rasoil; // 保存土壤阻力
     } else {
         // 有植被：计算与植被相关的阻力
-        float sq = sqrt(aerocoeff.CD1 * lai); // 计算与叶面积指数相关的参数
-        float g1 = Utils::max(3.3, sqrt(aerocoeff.CSSOIL + aerocoeff.Cd * lai / 2.0));
+//        float sq = sqrt(aerocoeff.CD1 * lai); // 计算与叶面积指数相关的参数
+        float sq = sqrt(aerocoeff.CD1 * (lai / 2.0)); // 计算与叶面积指数相关的参数
+        float g1 = Utils::max(3.3, sqrt(aerocoeff.CSSOIL + aerocoeff.Cd * (lai / 2.0)));
         float n = aerocoeff.Cd * lai / (2.0 * kappa * kappa);
         float zr = 2.5 * hc; // 计算参考高度
 
         // 计算零平面位移高度和动量粗糙度长度
         d = hc * (1 - (1 - exp(-sq)) / sq);
         z0m = (hc - d) * exp(-kappa * g1 + psicor);
+
+        if (hc > z) {
+            float pm_z = psim(z - d, L);
+
+            float ustar_temp = Utils::max(0.001, kappa * u / (log((z - d) / z0m) - pm_z));
+
+            float pm_h = psim(hc - d, L);
+            u = Utils::max(0.01, ustar_temp / kappa * (log((hc - d) / z0m) - pm_h));
+        }
 
         // 计算动量和热稳定修正
         float pm_z = psim(z - d, L);
@@ -178,9 +188,14 @@ void Aerodynamic::aeresist_urban(std::shared_ptr<Defined> defined, std::shared_p
 
     // 常量定义
     float kappa = 0.4; // von Karman常数
+    float cp = 1200;   // 比热容
+    float pa = 1205;   // 空气密度
 
     // 定义变量以存储计算结果
+    float d1, z0m1, d2, z0m2, z1, z2, rasoil;
     float d, z0m;
+    float CD_wall = 0.2;
+    float CD_roof = 1.5;
     float L = resist.L; // Monin-Obukhov长度
 
     // (1) 每栋建筑的占地面积
@@ -207,6 +222,7 @@ void Aerodynamic::aeresist_urban(std::shared_ptr<Defined> defined, std::shared_p
     float lambda_p = total_building_area / pixel_area;  //Macdonald, 1998
     float m_a = 4.0; //经验系数取值
     d = (1 + std::pow(m_a, -lambda_p) * (lambda_p - 1)) * hc;
+//    zr = d + 0.1 * hc;
 
     // 计算稳定性修正
     float pm_z = psim(z - d, L);
@@ -218,7 +234,7 @@ void Aerodynamic::aeresist_urban(std::shared_ptr<Defined> defined, std::shared_p
 
     // 计算摩擦速度和热扩散率
     float ustar = Utils::max(0.001, kappa * u / (log((z - d) / z0m) - pm_z));
-    float kh = kappa * ustar * (hc - d);
+    float kh = kappa * ustar * (hc - d); // 初步热扩散率计算
 
     // 根据稳定性进一步调整热扩散率
     if (L < -4) kh = kappa * ustar * (zr - d) * sqrt(1 - 16 * (hc - d) / L);
@@ -280,9 +296,18 @@ void Aerodynamic::aeresist_urban(std::shared_ptr<Defined> defined, std::shared_p
     float log_term_2 = std::log((delta_z + hc / 3.0) / z0m_town);
     U_can = (2.0 / M_PI) * exp_term * (log_term_1 / log_term_2) * std::abs(Ua);
 
+    // RES_r = (std::log(10.0 / 0.01))/ (ustar * kappa);
+    // float Zu = 15.0;
+    // float Zt = 2.0;
+    // float Z0M = 1.5;
+    // float Z0H = Z0M / 1000.0;
+    float Zu = 10.0;
+    float Zt = 2.0;
     float Z0M = hc / 8.0;
     float Z0H = Z0M / 7.0;
     ustar = Utils::max(0.001, kappa * u / (log((z - d) / z0m) - pm_z));
+    // RES_r = 1.0 / (kappa * ustar) * log(z); // 计算土壤气动阻力
+    // RES_r = ((log((Zu - d)/Z0M) - psi_m1) * (log((Zt - d)/Z0H) - psi_m2)) / (kappa * kappa * u);
     RES_r = (std::log(10.0 / 0.01))/ (ustar * kappa);
     RES_s = RES_w = (11.8 + 4.2 * (std::pow(U_can, 2) + std::pow(W_can, 2)));  // 计算阻力并赋值给 RES_r 和 RES_w
 

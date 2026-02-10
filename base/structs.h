@@ -221,12 +221,21 @@ struct Urban
     float length;
 };
 
+typedef struct {
+    float length;
+    float width;
+    float height;
+    float alpha;
+    float ci=1.0;
+} BShape;
 
-// struct AtomCond
-// {
-//     float Esky;
-//     float Esun;
-// };
+struct Building {
+    std::vector<std::vector<double>> shapes; // 每个建筑物的形状参数：长度、宽度、高度、密度
+    int n_part; // 墙壁分段数量
+    //    std::vector<double> Eroof, Ewall, Estreat; // 发射率
+    float Eroof, Ewall, Estreat; // 发射率
+};
+
 
 struct Meteo
 {
@@ -238,19 +247,6 @@ struct Meteo
     float rin;
     float rli;
 };
-
-//struct Meteometa
-//{
-//    float z;
-//    float sm;
-//    float ea;
-//    float Ca;
-//    float Oa;
-//    float Tsold;
-//    float SatWater;
-//    float dtime;
-//};
-
 
 struct AeroCoeff
 {
@@ -271,6 +267,9 @@ struct Terrain
     float dem;
     float aspect;
     float slope;
+    float n;
+    float h;
+    float r;
 };
 
 struct InputSet
@@ -327,6 +326,7 @@ struct Heatflux
     float Nwallshaded;
     float Nstreetsunlit;
     float Nstreetshaded;
+
     float Hroofsunlit;
     float Hroofshaded;
     float Hwallsunlit;
@@ -449,12 +449,6 @@ struct Satellite
 };
 
 
-struct Building {
-    std::vector<std::vector<double>> shapes; // 每个建筑物的形状参数：长度、宽度、高度、密度
-    int n_part; // 墙壁分段数量
-//    std::vector<double> Eroof, Ewall, Estreat; // 发射率
-    float Eroof, Ewall, Estreat; // 发射率
-};
 
 
 // change at a 10-min step
@@ -485,3 +479,4 @@ struct StaticVariable
     // soil reflectance
     Spectral spectal;
 };
+

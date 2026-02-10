@@ -35,10 +35,10 @@ public:
 
 
     std::string predifineDir="./predefine/";
+    // unique
     OptCoeff m_optCoeff;
     AeroCoeff m_aerocoeff;
-    LeafBio m_leafbio;
-    SoilSet m_soilset;
+
     Canopy m_canopy;
     MeteoMeta m_meta;
     Spectral m_spectral;
@@ -49,6 +49,10 @@ public:
 //    float ltau_ir;
 //    float rs_ir;
 
+    LeafBio m_leafbio;
+    SoilSet m_soilset;
+
+    //function
     LeafOpt m_leafopt;
     SoilOpt m_soilopt;
 
@@ -67,6 +71,7 @@ public:
     std::map<int,Canopy> m_mCanopy;
     std::map<int,LeafBio> m_mLeafbio;
     std::map<int,Spectral> m_mSpectral;
+
     std::map<int,Canopy> m_mCanopy_sub;
     std::map<int,LeafBio> m_mLeafbio_sub;
     std::map<int,Spectral> m_mSpectral_sub;

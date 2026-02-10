@@ -152,8 +152,8 @@ void Model::inputGeoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelI
     //根据 m_areakey 确定是否使用整个图像或仅使用部分区域。如果 m_areakey 为 0，则处理整个图像；否则，仅处理指定的子区域。
     int height1,height2,width1,width2;
     if (fileio->m_areakey == 0) {
-        fileio->m_workwidth = width;
-        fileio->m_workheight = height;
+        fileio->m_width_region = width;
+        fileio->m_height_region = height;
         height1 = 0;
         height2 = height;
         width1 = 0;
@@ -169,8 +169,8 @@ void Model::inputGeoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelI
         //-------------------------------------------------------
         //------ 可以采用上面计算结果，也可以将上面计算过程注释，直接通过命令设置实现
         //-------------------------------------------------------
-        fileio->m_workwidth = fileio->m_endwidth - fileio->m_startwidth;
-        fileio->m_workheight = fileio->m_endheight - fileio->m_startheight;
+        fileio->m_width_region = fileio->m_endwidth - fileio->m_startwidth;
+        fileio->m_height_region = fileio->m_endheight - fileio->m_startheight;
         height1 = fileio->m_startheight;
         height2 = fileio->m_endheight;
         width1 = fileio->m_startwidth;
@@ -325,66 +325,53 @@ void Model::inputGeoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelI
 
     int width = fileio->m_width;
     int height = fileio->m_height;
-    int meteowidth = fileio->m_meteowidth;
-    int meteoheight = fileio->m_meteoheight;
+    int meteowidth = fileio->m_width_meteo;
+    int meteoheight = fileio->m_height_meteo;
 
     //根据 m_areakey 确定是否使用整个图像或仅使用部分区域。如果 m_areakey 为 0，则处理整个图像；否则，仅处理指定的子区域。
 
-    if (fileio->m_areakey == 0)
-    {
+    auto calculateGeoBounds = [](auto& fileio) {
         fileio->m_startlon = fileio->trans_global[0];
         fileio->m_startlat = fileio->trans_global[3];
-        fileio->m_endlon = fileio->trans_global[0] + fileio->m_width * fileio->trans_global[1]; // 右下角经度
-        fileio->m_endlat = fileio->trans_global[3] + fileio->m_height * fileio->trans_global[5]; // 右下角纬度
+        fileio->m_endlon = fileio->trans_global[0] + fileio->m_width * fileio->trans_global[1];
+        fileio->m_endlat = fileio->trans_global[3] + fileio->m_height * fileio->trans_global[5];
         fileio->m_startlon_meteo = fileio->trans_meteo[0];
         fileio->m_startlat_meteo = fileio->trans_meteo[3];
-        fileio->m_endlon_meteo = fileio->trans_meteo[0] + fileio->m_meteowidth * fileio->trans_meteo[1]; // 右下角经度
-        fileio->m_endlat_meteo = fileio->trans_meteo[3] + fileio->m_meteoheight * fileio->trans_meteo[5]; // 右下角纬度
-        fileio->step_global2meteo = ((fileio->m_endlon - fileio->m_startlon) / (fileio->m_width)) / ((fileio->m_endlon_meteo - fileio->m_startlon_meteo) / (fileio->m_meteowidth)) ;
+        fileio->m_endlon_meteo = fileio->trans_meteo[0] + fileio->m_width_meteo * fileio->trans_meteo[1];
+        fileio->m_endlat_meteo = fileio->trans_meteo[3] + fileio->m_height_meteo * fileio->trans_meteo[5];
+        fileio->step_global2meteo = ((fileio->m_endlon - fileio->m_startlon) / fileio->m_width) /
+                                  ((fileio->m_endlon_meteo - fileio->m_startlon_meteo) / fileio->m_width_meteo);
+    };
 
+    calculateGeoBounds(fileio);  // 统一计算地理边界
+
+    if (fileio->m_areakey == 0) {
         startHeight = 0;
         endHeight = height;
         startWidth = 0;
         endWidth = width;
-
-        fileio->m_workwidth = endWidth - startWidth;
-        fileio->m_workheight = endHeight - startHeight;
-        fileio->m_width_region = width;
-        fileio->m_height_region = height;
-
-        fileio->m_vPos = std::vector<uint32_t>(width * height,-1);
-        int pos_leftup = startHeight * width + startWidth;
-        int pos_rightdown = (endHeight - 1) * width + (endWidth - 1);
-        fileio->m_startlat_region = fileio->m_vLat[pos_leftup];
-        fileio->m_endlat_region = fileio->m_vLat[pos_rightdown];
-        fileio->m_startlon_region = fileio->m_vLon[pos_leftup];
-        fileio->m_endlon_region = fileio->m_vLon[pos_rightdown];
     }
-    else
-    {
-        fileio->m_startlon = fileio->trans_global[0];
-        fileio->m_startlat = fileio->trans_global[3];
-        fileio->m_endlon = fileio->trans_global[0] + fileio->m_width * fileio->trans_global[1]; // 右下角经度
-        fileio->m_endlat = fileio->trans_global[3] + fileio->m_height * fileio->trans_global[5]; // 右下角纬度
-        fileio->m_startlon_meteo = fileio->trans_meteo[0];
-        fileio->m_startlat_meteo = fileio->trans_meteo[3];
-        fileio->m_endlon_meteo = fileio->trans_meteo[0] + fileio->m_meteowidth * fileio->trans_meteo[1]; // 右下角经度
-        fileio->m_endlat_meteo = fileio->trans_meteo[3] + fileio->m_meteoheight * fileio->trans_meteo[5]; // 右下角纬度
-        fileio->step_global2meteo = ((fileio->m_endlon - fileio->m_startlon) / (fileio->m_width)) / ((fileio->m_endlon_meteo - fileio->m_startlon_meteo) / (fileio->m_meteowidth)) ;
 
-        fileio->m_workwidth = endWidth - startWidth;
-        fileio->m_workheight = endHeight - startHeight;
-        fileio->m_width_region = endWidth - startWidth;
-        fileio->m_height_region = endHeight - startHeight;
+    // 统一处理公共部分
+    fileio->m_width_region = endWidth - startWidth;
+    fileio->m_height_region = endHeight - startHeight;
+    fileio->m_width_region = (fileio->m_areakey == 0) ? width : endWidth - startWidth;
+    fileio->m_height_region = (fileio->m_areakey == 0) ? height : endHeight - startHeight;
 
-        fileio->m_vPos = std::vector<uint32_t>(width * height,-1);
-        int pos_leftup = fileio->m_startheight * width + fileio->m_startwidth;
-        int pos_rightdown = fileio->m_endheight * width + fileio->m_endwidth;
-        fileio->m_startlat_region = fileio->m_vLat[pos_leftup];
-        fileio->m_endlat_region = fileio->m_vLat[pos_rightdown];
-        fileio->m_startlon_region = fileio->m_vLon[pos_leftup];
-        fileio->m_endlon_region = fileio->m_vLon[pos_rightdown];
-    }
+    fileio->m_vPos = std::vector<uint32_t>(width * height, -1);
+
+    // 统一计算区域边界
+    const int pos_leftup = (fileio->m_areakey == 0) ?
+        startHeight * width + startWidth :
+        fileio->m_startheight * width + fileio->m_startwidth;
+    const int pos_rightdown = (fileio->m_areakey == 0) ?
+        (endHeight - 1) * width + (endWidth - 1) :
+        fileio->m_endheight * width + fileio->m_endwidth;
+
+    fileio->m_startlat_region = fileio->m_vLat[pos_leftup];
+    fileio->m_endlat_region = fileio->m_vLat[pos_rightdown];
+    fileio->m_startlon_region = fileio->m_vLon[pos_leftup];
+    fileio->m_endlon_region = fileio->m_vLon[pos_rightdown];
 
     long k_pos=0;
     long n_pixel = 0;
@@ -416,6 +403,14 @@ void Model::inputGeoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelI
             }
             updateVegData(pixelio, modelio, ksubtype);
 
+            // if (fileio->m_isvcmax == 1){
+            //     long ksubpos = pixelio->k_workheight * fileio->m_width_region + pixelio->k_workwidth;
+            //     auto & temp_vcmax = fileio->m_Vcmax[ksubpos];
+            //     if (temp_vcmax != 0) {
+            //         pixelio->m_pInputset->leafbio.Vcmax = temp_vcmax;
+            //     }
+            // }
+
             auto & definedio = modelio->m_pDefined;
             pixelio->m_pStaticVariable->spectal.leafRefl_ir = definedio->m_spectral.leafRefl_ir;
             pixelio->m_pStaticVariable->spectal.leafTran_ir = definedio->m_spectral.leafTran_ir;
@@ -424,24 +419,19 @@ void Model::inputGeoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelI
             if (fileio->m_satmode == 1){
                 pixelio->m_pInputset->canopy.treeStand = fileio->m_treedensity[k_pos] / 1000000.0;
                 pixelio->m_pInputset->canopy.canopyHeight = fileio->m_canopyheight[k_pos];
-                pixelio->emis_s = fileio->m_emis_s[k_pos] / 1000.0;;
-                pixelio->emis_v = fileio->m_emis_v[k_pos] / 1000.0;;
+                pixelio->emis_s = fileio->m_emis_s[k_pos] / 1000.0;
+                pixelio->emis_v = fileio->m_emis_v[k_pos] / 1000.0;
             }
-
             modelio->m_vPixelio.push_back(pixelio);
             fileio->m_vPos[k_pos] = n_pixel;
             n_pixel++;
         }
     }
-
 }
 
 
-int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelIO> &modelio,
-                           int year, int doy)
+int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelIO> &modelio, int year, int doy)
 {
-//    int year = 2019;
-//    int doy = 244;
     fileio->m_vLai.clear();
     fileio->m_vSM.clear();
     fileio->m_vRin.clear();
@@ -454,38 +444,26 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
 
     fileio->readMeteodata(year, doy);
 
-    //获取高分辨率图像的宽度和高度，以及气象数据的宽度。计算气象数据宽度与高分辨率图像宽度的比例。
     int width = fileio->m_width;
     int height = fileio->m_height;
-    int meteowidth = fileio->m_meteowidth;
+    int meteowidth = fileio->m_width_meteo;
 
     float step = fileio->step_global2meteo;
-    // float offset_width = (fileio->m_startlon - fileio->m_startlon_meteo) / ((fileio->m_endlon_meteo - fileio->m_startlon_meteo) / fileio->m_meteowidth);
-    // float offset_height = (fileio->m_startlat - fileio->m_startlat_meteo) / ((fileio->m_endlat_meteo - fileio->m_startlat_meteo) / fileio->m_meteoheight);
-    int offset_width = (int)ceil((fileio->m_startlon - fileio->m_startlon_meteo) / ((fileio->m_endlon_meteo - fileio->m_startlon_meteo) / fileio->m_meteowidth));
-    int offset_height = (int)ceil((fileio->m_startlat - fileio->m_startlat_meteo) / ((fileio->m_endlat_meteo - fileio->m_startlat_meteo) / fileio->m_meteoheight));
+    int offset_width = (int)ceil((fileio->m_startlon - fileio->m_startlon_meteo) / ((fileio->m_endlon_meteo - fileio->m_startlon_meteo) / fileio->m_width_meteo));
+    int offset_height = (int)ceil((fileio->m_startlat - fileio->m_startlat_meteo) / ((fileio->m_endlat_meteo - fileio->m_startlat_meteo) / fileio->m_height_meteo));
 
     for(int kpixel=0; kpixel < modelio->m_vPixelio.size(); kpixel++)
     {
-        //遍历每个像素并获取 PixelIO 对象。将定义的土壤、叶片生物、冠层和元数据输入集复制到每个像素的输入设置中。
         std::shared_ptr<PixelIO> &pixelio = modelio->m_vPixelio[kpixel];
 
-        //计算像素在高分辨率图像和低分辨率气象数据中的位置。
         int kwidth = pixelio->k_width;
         int kheight = pixelio->k_height;
-//        int kwidth_meteo = kwidth * step;
-//        int kheight_meteo = kheight * step;
         int kwidth_meteo = kwidth * step + offset_width;
         int kheight_meteo = kheight * step + offset_height;
-        // int kwidth_meteo = kwidth * step + offset_width + 0.5;
-        // int kheight_meteo = kheight * step + offset_height + 0.5;
         int k_pos = kheight * width + kwidth;   //高分辨率中的位置
         int k_meteopos = kheight_meteo * meteowidth + kwidth_meteo;   //低分辨率中的位置
 
-        //根据 m_islai 和 m_issm 标志，从高分辨率或低分辨率数据中读取叶面积指数（LAI）和土壤水分（SMC），并更新像素的输入设置。
-        //'''LAI位置计算需要修改'''//
         if(fileio->m_islai==1){
-            // 因为lai底图是全球的，而global不一定，因此需要确定global在lai底图的位置，进而确定研究区在lai底图的位置
             double trans_lai[6];
             std::string proj_lai = fileio->proj_meteo;
             std::copy(std::begin(fileio->trans_meteo), std::end(fileio->trans_meteo), trans_lai);
@@ -494,8 +472,8 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
             int width_lai = 36000;
             int col_global2lai = static_cast<int>((fileio->trans_global[0] - trans_lai[0]) / trans_lai[1]);  // global在lai图像的列号
             int row_global2lai = static_cast<int>((fileio->trans_global[3] - trans_lai[3]) / trans_lai[5]);  // global在lai图像的行号
-            int col_lai = col_global2lai + fileio->m_startwidth; // 研究区在lai图像的列号
-            int row_lai = row_global2lai + fileio->m_startheight; // 研究区在lai图像的行号
+            int col_lai = col_global2lai + kwidth; // 研究区在lai图像的列号
+            int row_lai = row_global2lai + kheight; // 研究区在lai图像的行号
             int k_pos_lai = row_lai * width_lai + col_lai;
             pixelio->m_pInputset->canopy.lai = fileio->m_vLai[k_pos_lai]/1000.0;
         }else{
@@ -508,112 +486,143 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
             pixelio->m_pInputset->soilset.SMC = fileio->m_vSM[k_meteopos];
         }
 
-        //如果fileio->m_vLai[k_pos]/1000.0大于32则为无效值，设置为0
-        if(pixelio->m_pInputset->canopy.lai>32){
+
+        modelio->m_pDefined->m_soilopt.bsm(modelio->m_pDefined->m_optCoeff, modelio->m_pDefined->m_soilset.bsm,
+                                           pixelio->m_pInputset->soilset.SMC,pixelio->m_pStaticVariable->spectal);
+
+        if(pixelio->m_pInputset->canopy.lai>25){
             pixelio->m_pInputset->canopy.lai = 0;
         }
 
-        //对于草地lai为0的情况，将其type改为16,并且理化参数改为土壤
-        if((pixelio->m_pInputset->canopy.type == 10) * (pixelio->m_pInputset->canopy.lai<=0))
+        if (pixelio->m_pInputset->canopy.lai <= 0) {
+            switch (pixelio->m_pInputset->canopy.type) {
+                case 6:
+                case 7:
+                case 8:
+                case 9:
+                case 10:
+                case 12:
+                case 14:
+                    pixelio->m_pInputset->canopy.type = 16;
+                    auto &temp_leafbio = modelio->m_pDefined->m_mLeafbio[16];
+                    pixelio->m_pInputset->leafbio = temp_leafbio;
+                    auto &temp_canopy = modelio->m_pDefined->m_mCanopy[16];
+                    pixelio->m_pInputset->canopy = temp_canopy;
+                    auto & temp_spectral = modelio->m_pDefined->m_mSpectral[16];
+                    pixelio->m_pStaticVariable->spectal = temp_spectral;
+            }
+        }
+
+        if((pixelio->m_pInputset->canopy.type == 11) * (pixelio->m_pInputset->canopy.lai<=0))
         {
-            pixelio->m_pInputset->canopy.type = 16;
-            auto  & temp_leafbio = modelio->m_pDefined->m_mLeafbio[16];
+            pixelio->m_pInputset->canopy.type = 17;
+            auto  & temp_leafbio = modelio->m_pDefined->m_mLeafbio[17];
             pixelio->m_pInputset->leafbio = temp_leafbio;
         }
 
-        if(fileio->m_issubtype == 1){
-            int ksubtype_temp = 0;
-            // long ksubpos_temp = pixelio->k_workheight * fileio->m_width + pixelio->k_workwidth;
-            long ksubpos_temp = pixelio->k_height * fileio->m_width + pixelio->k_width;
-            ksubtype_temp = fileio->m_subType[ksubpos_temp];
-            //如果是春玉米，那么在七月到八月按裸土计算
-            if(ksubtype_temp == 2)
-            {
-                if((doy > 105) & (doy < 235)){
-                    auto & temp_canopy = modelio->m_pDefined->m_mCanopy[16];
-                    auto lai_backup = pixelio->m_pInputset->canopy.lai;
-                    pixelio->m_pInputset->canopy = temp_canopy;
-                    pixelio->m_pInputset->canopy.lai = lai_backup;
-                    auto  & temp_leafbio = modelio->m_pDefined->m_mLeafbio[16];
-                    pixelio->m_pInputset->leafbio = temp_leafbio;
-                }
-            }
-
-            if(ksubtype_temp == 3){
-                if((doy > 150) * (doy < 300)){
-                    auto & temp_canopy = modelio->m_pDefined->m_mCanopy[16];
-                    auto lai_backup = pixelio->m_pInputset->canopy.lai;
-                    pixelio->m_pInputset->canopy = temp_canopy;
-                    pixelio->m_pInputset->canopy.lai = lai_backup;
-                    auto  & temp_leafbio = modelio->m_pDefined->m_mLeafbio[16];
-                    pixelio->m_pInputset->leafbio = temp_leafbio;
-                }
-            }
-
-        }
+        // if(fileio->m_issubtype == 1){
+        //     int ksubtype_temp = 0;
+        //     long ksubpos_temp = pixelio->k_height * fileio->m_width + pixelio->k_width;
+        //     ksubtype_temp = fileio->m_subType[ksubpos_temp];
+        //     if(ksubtype_temp == 2)
+        //     {
+        //         if((doy > 105) & (doy < 235)){
+        //             auto & temp_canopy = modelio->m_pDefined->m_mCanopy[16];
+        //             auto lai_backup = pixelio->m_pInputset->canopy.lai;
+        //             pixelio->m_pInputset->canopy = temp_canopy;
+        //             pixelio->m_pInputset->canopy.lai = lai_backup;
+        //             auto  & temp_leafbio = modelio->m_pDefined->m_mLeafbio[16];
+        //             pixelio->m_pInputset->leafbio = temp_leafbio;
+        //         }
+        //     }
+        //
+        //     if(ksubtype_temp == 3){
+        //         if((doy > 150) * (doy < 300)){
+        //             auto & temp_canopy = modelio->m_pDefined->m_mCanopy[16];
+        //             auto lai_backup = pixelio->m_pInputset->canopy.lai;
+        //             pixelio->m_pInputset->canopy = temp_canopy;
+        //             pixelio->m_pInputset->canopy.lai = lai_backup;
+        //             auto  & temp_leafbio = modelio->m_pDefined->m_mLeafbio[16];
+        //             pixelio->m_pInputset->leafbio = temp_leafbio;
+        //         }
+        //     }
+        //
+        // }
 
         if(fileio->m_isvcmax == 1)
         {
-            pixelio->m_pInputset->leafbio.Vcmax = fileio->m_Vcmax[k_pos];
+            auto & temp_vcmax = fileio->m_Vcmax[k_pos];
+            if (temp_vcmax != 0) {
+                    pixelio->m_pInputset->leafbio.Vcmax = temp_vcmax;
+                }
         }
 
-        //清空 vMeteo 矢量，然后遍历每个节点，计算气象数据，并将其添加到 vMeteo 中。
         modelio->m_isnodefirst = true;
         pixelio->m_pInputset->vMeteo.clear();
-        for(int knode=0;knode< fileio->m_node;knode++)
-        {
-            if (fileio->step_global2meteo < 0.1)
-            {
-                // 高斯滤波计算气象参数的加权平均值
+        for (int knode = 0; knode < fileio->m_node; knode++) {
+            if (fileio->step_global2meteo < 0.1) {
                 float metau = 0.0, metap = 0.0, metata = 0.0, metaea = 0.0, metarin = 0.0, metarli = 0.0, weight = 0.0;
                 int krange = 1;
                 float sigma = 1.0;
                 float weight_sum = 0.0;
-                for (int i = -krange; i <= krange; ++i)
-                {
-                    for (int j = -krange; j <= krange; ++j)
-                    {
+                for (int i = -krange; i <= krange; ++i) {
+                    for (int j = -krange; j <= krange; ++j) {
                         int ni = kwidth_meteo + i;
                         int nj = kheight_meteo + j;
-                        float distance = pow(
-                            pow(kwidth * step + offset_width - ni, 2) + pow(kheight * step + offset_height - nj, 2),
-                            0.5);
-                        if (ni >= 0 && ni < meteowidth && nj >= 0)
-                        {
+
+                        if (ni >= 0 && ni < meteowidth && nj >= 0 && nj < meteowidth) {
+                            float distance = sqrt(
+                                pow(kwidth * step + offset_width - ni, 2) +
+                                pow(kheight * step + offset_height - nj, 2));
+
                             int pos_temp = nj * meteowidth + ni;
-                            float utemp = fileio->m_vU[knode][pos_temp];
-                            float ptemp = fileio->m_vP[knode][pos_temp];
-                            float eatemp = SCI::es_fun(fileio->m_vEa[knode][pos_temp] - 273.15);
-                            float tatemp = fileio->m_vTa[knode][pos_temp];
-                            float rintemp = fileio->m_vRin[knode][pos_temp];
-                            float rlitemp = fileio->m_vRli[knode][pos_temp];
-                            // weight = 1.0 / distance;
                             weight = exp(-pow(distance, 2) / (2 * pow(sigma, 2)));
-                            metau += utemp * weight;
-                            metap += ptemp * weight;
-                            metaea += eatemp * weight;
-                            metata += tatemp * weight;
-                            metarin += rintemp * weight;
-                            metarli += rlitemp * weight;
+
+                            metau += fileio->m_vU[knode][pos_temp] * weight;
+                            metap += fileio->m_vP[knode][pos_temp] * weight;
+                            metaea += SCI::es_fun(fileio->m_vEa[knode][pos_temp] - 273.15) * weight;
+                            metata += fileio->m_vTa[knode][pos_temp] * weight;
+                            metarin += fileio->m_vRin[knode][pos_temp] * weight;
+                            metarli += fileio->m_vRli[knode][pos_temp] * weight;
                             weight_sum += weight;
                         }
                     }
                 }
                 // 归一化结果
-                metau /= weight_sum;
-                metap /= weight_sum;
-                metata /= weight_sum;
-                metaea /= weight_sum;
-                metarin /= weight_sum;
-                metarli /= weight_sum;
+                if (weight_sum > 1e-6f) {
+                    metau /= weight_sum;
+                    metap /= weight_sum;
+                    metata /= weight_sum;
+                    metaea /= weight_sum;
+                    metarin /= weight_sum;
+                    metarli /= weight_sum;
+                } else {
+                    // Fallback to center point
+                    int center_pos = kheight_meteo * meteowidth + kwidth_meteo;
+                    metau = fileio->m_vU[knode][center_pos];
+                    metap = fileio->m_vP[knode][center_pos];
+                    metaea = SCI::es_fun(fileio->m_vEa[knode][center_pos] - 273.15);
+                    metata = fileio->m_vTa[knode][center_pos];
+                    metarin = fileio->m_vRin[knode][center_pos];
+                    metarli = fileio->m_vRli[knode][center_pos];
+                }
+
+                // 测量高度处的ta，p转化
+                float height_temp = pixelio->m_pInputset->canopy.height - 2;
+                if (knode <= 10 || knode >= 22) {
+                    metata -= 0.006f * height_temp;
+                    metap = metap * exp(-(9.80665 * pixelio->m_pInputset->canopy.height) / (287.05 * metata));
+                } else {
+                    metata += 0.003f * height_temp;
+                    metap = metap * exp(-(9.80665 * pixelio->m_pInputset->canopy.height) / (287.05 * metata));
+                }
+
                 Meteo meteo{
                     fileio->m_vT[knode], metau, metata, metaea,
                     metap, metarin, metarli
                 };
                 pixelio->m_pInputset->vMeteo.push_back(meteo);
-            }
-            else
-            {
+            } else {
                 float ea = SCI::es_fun(fileio->m_vEa[knode][k_meteopos] - 273.15);
                 Meteo meteo{
                     fileio->m_vT[knode], fileio->m_vU[knode][k_meteopos], fileio->m_vTa[knode][k_meteopos], ea,
@@ -622,25 +631,16 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
                 };
                 pixelio->m_pInputset->vMeteo.push_back(meteo);
             }
-            //pixelio->m_vSkt[knode] = (fileio->m_vTa[knode][k_meteopos]);
 
-            //如果是第一次处理节点，初始化动态变量，如叶片和土壤温度，生物状态中的 CO₂ 浓度和饱和蒸汽压。
-            if(modelio->m_isfirst && modelio->m_isnodefirst) {
+            if (modelio->m_isfirst && modelio->m_isnodefirst) {
                 pixelio->m_pDynamicVariable->thermal.Tleafsunlit = 273.17;
                 pixelio->m_pDynamicVariable->thermal.Tleafshaded = 273.17;
                 pixelio->m_pDynamicVariable->thermal.Tsoilsunlit = 273.17;
                 pixelio->m_pDynamicVariable->thermal.Tsoilshaded = 273.17;
 
-                pixelio->m_pDynamicVariable->thermal.Troofsunlit = 273.17;
-                pixelio->m_pDynamicVariable->thermal.Troofshaded = 273.17;
-                pixelio->m_pDynamicVariable->thermal.Twallsunlit = 273.17;
-                pixelio->m_pDynamicVariable->thermal.Twallshaded = 273.17;
-                pixelio->m_pDynamicVariable->thermal.Tstreetsunlit = 273.17;
-                pixelio->m_pDynamicVariable->thermal.Tstreetshaded = 273.17;
-
-                pixelio->m_pDynamicVariable->biostate.cs =  modelio->m_pDefined->m_meta.Ca;
-                pixelio->m_pDynamicVariable->biostate.ci =  modelio->m_pDefined->m_meta.Ca;
-                pixelio->m_pDynamicVariable->biostate.es =  modelio->m_pDefined->m_meta.ea;
+                pixelio->m_pDynamicVariable->biostate.cs = modelio->m_pDefined->m_meta.Ca;
+                pixelio->m_pDynamicVariable->biostate.ci = modelio->m_pDefined->m_meta.Ca;
+                pixelio->m_pDynamicVariable->biostate.es = modelio->m_pDefined->m_meta.ea;
                 modelio->m_isnodefirst = false;
             }
         }
@@ -650,6 +650,7 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
     modelio->m_isfirst = false;
     return 0;
 }
+
 
 int Model::inputSatData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelIO> &modelio,
                            int year, int doy)
@@ -665,8 +666,8 @@ int Model::inputSatData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelIO
     //获取regional和sat的交点经纬度并转化为region中的行列号
 
     float overlapLonMin = std::max(fileio->m_startlon_sat, float(fileio->m_startlon + fileio->trans_global[1] * fileio->m_startwidth));
-    float overlapLonMax = std::min(fileio->m_endlon_sat, float(fileio->m_startlon + fileio->trans_global[1] * (fileio->m_startwidth + fileio->m_workwidth)));
-    float overlapLatMin = std::max(fileio->m_endlat_sat, float(fileio->m_startlat + fileio->trans_global[5] * (fileio->m_startheight + fileio->m_workheight)));
+    float overlapLonMax = std::min(fileio->m_endlon_sat, float(fileio->m_startlon + fileio->trans_global[1] * (fileio->m_startwidth + fileio->m_width_region)));
+    float overlapLatMin = std::max(fileio->m_endlat_sat, float(fileio->m_startlat + fileio->trans_global[5] * (fileio->m_startheight + fileio->m_height_region)));
     float overlapLatMax = std::min(fileio->m_startlat_sat, float(fileio->m_startlat + fileio->trans_global[5] * fileio->m_startheight));
     int startWidth_sat = static_cast<int>((overlapLonMin - fileio->m_startlon_sat) / fileio->trans_sat[1]);
     int startHeight_sat = static_cast<int>((overlapLatMax - fileio->m_startlat_sat) / fileio->trans_sat[5]); // 注意这里是 LatMax
@@ -714,6 +715,7 @@ int Model::inputSatData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelIO
     modelio->m_isfirst = false;
     return 0;
 }
+
 
 void Model::inputDefinedData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelIO> &modelio) {
 

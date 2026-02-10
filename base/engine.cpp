@@ -76,11 +76,10 @@ int runpixel(std::shared_ptr<Model> model, std::shared_ptr<Defined> defined, std
         switch (pixelio->m_pInputset->canopy.type)
         {
         case 13:
-            m_rt.netrad_shortwave_urban(defined, pixelio); // 计算短波净辐射
-            m_rt.netrad_longwave_urban(defined, pixelio); // 计算长波净辐射
-
+            m_rt.netrad_shortwave_urban(defined, pixelio);
             for (kiter = 0; kiter < N_ITER; kiter++)
             {
+                m_rt.netrad_longwave_urban(defined, pixelio);
                 m_aero.aeresist_urban(defined, pixelio);
                 m_bio.suresist_urban(defined, pixelio);
                 m_evapo.evapotranspiration_urban(pixelio);
@@ -92,10 +91,10 @@ int runpixel(std::shared_ptr<Model> model, std::shared_ptr<Defined> defined, std
             }
             break;
         default:
-            m_rt.netrad_shortwave(defined, pixelio); // 计算短波净辐射
-            m_rt.netrad_longwave(defined, pixelio); // 计算长波净辐射
+            m_rt.netrad_shortwave(defined, pixelio);
             for (kiter = 0; kiter < N_ITER; kiter++)
             {
+                m_rt.netrad_longwave(defined, pixelio);
                 m_aero.aeresist(defined, pixelio);
                 m_bio.suresist(defined, pixelio);
                 m_evapo.evapotranspiration(pixelio);
@@ -166,28 +165,23 @@ int subrunpixel(std::shared_ptr<Model> model, std::shared_ptr<Defined> defined,s
             if (iscloused) break;
 
         }
-        // calculate the pixel effective temperature
         m_rt.nadirTir(pixelio);
-        // push the flash result (at a specifc node) to the pixel series variables (nodes in a day);
         model->flash(pixelio);
 
 
     }
-    // pixelio->lon = 1000;
     return 1;
 }
 
 
 void Engine::observe(int knode) {
-
-
     std::cout<<"begin observing"<<std::endl;
     //---------------------------------------
     //----- Extra time ???
     //---------------------------------------
     // 获取工作区的宽度和高度
-    int width = m_fileio->m_workwidth;
-    int height = m_fileio->m_workheight;
+    int width = m_fileio->m_width_region;
+    int height = m_fileio->m_height_region;
     int startNode,endNode;
 
     // 确定开始和结束节点,根据 knode 的值，确定是处理单个节点还是所有节点。
@@ -205,42 +199,41 @@ void Engine::observe(int knode) {
     m_fileio->m_vTcs.clear();
     m_fileio->m_vTch.clear();
 
-    // m_fileio->m_vTroofsunlit.clear();
-    // m_fileio->m_vTroofshaded.clear();
-    // m_fileio->m_vTwallsunlit.clear();
-    // m_fileio->m_vTwallshaded.clear();
-    // m_fileio->m_vTstreetsunlit.clear();
-    // m_fileio->m_vTstreetshaded.clear();
+    m_fileio->m_vTroofsunlit.clear();
+    m_fileio->m_vTroofshaded.clear();
+    m_fileio->m_vTwallsunlit.clear();
+    m_fileio->m_vTwallshaded.clear();
+    m_fileio->m_vTstreetsunlit.clear();
+    m_fileio->m_vTstreetshaded.clear();
 
     m_fileio->m_vDBT.clear();
 
     // 初始化温度向量，大小为工作区的宽度 * 高度
     for(int k=startNode;k<endNode;k++) {
-  //  m_fileio->m_vTsk = std::vector<float>(width * height, 0);
         std::vector<float> temptsk = std::vector<float>(width * height, 0);
         std::vector<float> temptss = std::vector<float>(width * height, 0);
         std::vector<float> temptsh = std::vector<float>(width * height, 0);
         std::vector<float> temptcs = std::vector<float>(width * height, 0);
         std::vector<float> temptch = std::vector<float>(width * height, 0);
 
-        // std::vector<float> temptroofsunlit = std::vector<float>(width * height, 0);
-        // std::vector<float> temptroofshaded = std::vector<float>(width * height, 0);
-        // std::vector<float> temptwallsunlit = std::vector<float>(width * height, 0);
-        // std::vector<float> temptwallshaded = std::vector<float>(width * height, 0);
-        // std::vector<float> temptstreetsunlit = std::vector<float>(width * height, 0);
-        // std::vector<float> temptstreetshaded = std::vector<float>(width * height, 0);
+        std::vector<float> temptroofsunlit = std::vector<float>(width * height, 0);
+        std::vector<float> temptroofshaded = std::vector<float>(width * height, 0);
+        std::vector<float> temptwallsunlit = std::vector<float>(width * height, 0);
+        std::vector<float> temptwallshaded = std::vector<float>(width * height, 0);
+        std::vector<float> temptstreetsunlit = std::vector<float>(width * height, 0);
+        std::vector<float> temptstreetshaded = std::vector<float>(width * height, 0);
 
         m_fileio->m_vTsk.push_back(temptsk);
         m_fileio->m_vTss.push_back(temptss);
         m_fileio->m_vTsh.push_back(temptsh);
         m_fileio->m_vTcs.push_back(temptcs);
         m_fileio->m_vTch.push_back(temptch);
-        // m_fileio->m_vTroofsunlit.push_back(temptroofsunlit);
-        // m_fileio->m_vTroofshaded.push_back(temptroofshaded);
-        // m_fileio->m_vTwallsunlit.push_back(temptwallsunlit);
-        // m_fileio->m_vTwallshaded.push_back(temptwallshaded);
-        // m_fileio->m_vTstreetsunlit.push_back(temptstreetsunlit);
-        // m_fileio->m_vTstreetshaded.push_back(temptstreetshaded);
+        m_fileio->m_vTroofsunlit.push_back(temptroofsunlit);
+        m_fileio->m_vTroofshaded.push_back(temptroofshaded);
+        m_fileio->m_vTwallsunlit.push_back(temptwallsunlit);
+        m_fileio->m_vTwallshaded.push_back(temptwallshaded);
+        m_fileio->m_vTstreetsunlit.push_back(temptstreetsunlit);
+        m_fileio->m_vTstreetshaded.push_back(temptstreetshaded);
 
     }
 
@@ -253,6 +246,7 @@ void Engine::observe(int knode) {
         int kheight = m_modelio->m_vPixelio[i]->k_workheight;
         int kworldwidth = m_modelio->m_vPixelio[i]->k_width;
         int kworldheight = m_modelio->m_vPixelio[i]->k_height;
+        int worldpos = kworldheight *0.04* m_fileio->m_width*0.04 + kworldwidth*0.04;  // 计算全局位置
         long pos = kheight * width + kwidth;  // 计算本地位置
 
         // 更新温度向量
@@ -266,12 +260,12 @@ void Engine::observe(int knode) {
             m_fileio->m_vTsh[kk][pos] = m_modelio->m_vPixelio[i]->m_vTsh[k];
             m_fileio->m_vTcs[kk][pos] = m_modelio->m_vPixelio[i]->m_vTcs[k];
 
-            // m_fileio->m_vTroofsunlit[kk][pos] = m_modelio->m_vPixelio[i]->m_vTrs[k];
-            // m_fileio->m_vTroofshaded[kk][pos] = m_modelio->m_vPixelio[i]->m_vTrh[k];
-            // m_fileio->m_vTwallsunlit[kk][pos] = m_modelio->m_vPixelio[i]->m_vTws[k];
-            // m_fileio->m_vTwallshaded[kk][pos] = m_modelio->m_vPixelio[i]->m_vTwh[k];
-            // m_fileio->m_vTstreetsunlit[kk][pos] = m_modelio->m_vPixelio[i]->m_vTts[k];
-            // m_fileio->m_vTstreetshaded[kk][pos] = m_modelio->m_vPixelio[i]->m_vTth[k];
+            m_fileio->m_vTroofsunlit[kk][pos] = m_modelio->m_vPixelio[i]->m_vTrs[k];
+            m_fileio->m_vTroofshaded[kk][pos] = m_modelio->m_vPixelio[i]->m_vTrh[k];
+            m_fileio->m_vTwallsunlit[kk][pos] = m_modelio->m_vPixelio[i]->m_vTws[k];
+            m_fileio->m_vTwallshaded[kk][pos] = m_modelio->m_vPixelio[i]->m_vTwh[k];
+            m_fileio->m_vTstreetsunlit[kk][pos] = m_modelio->m_vPixelio[i]->m_vTts[k];
+            m_fileio->m_vTstreetshaded[kk][pos] = m_modelio->m_vPixelio[i]->m_vTth[k];
         }
 
         m_fileio->m_vDBT[0][pos] = m_modelio->m_vPixelio[i]->m_DBT;
@@ -292,21 +286,6 @@ void Engine::sythrun() {
 
 void Engine::run()
 {
-    switch (m_fileio->m_satmode)
-    {
-    case 0:
-        std::cout << "Running sat mode 0" << std::endl;
-        break;
-    case 1:
-        std::cout << "Running sat mode 1" << std::endl;
-        break;
-    case 2:
-        std::cout << "Running sat mode 2" << std::endl;
-        break;
-    default:
-        std::cout << "Input sat mode error" << std::endl;
-        std::exit(EXIT_FAILURE); // 终止程序并返回失败状态
-    }
 
     // 初始化变量
     initVariable(m_fileio->m_startwidth, m_fileio->m_endwidth, m_fileio->m_startheight, m_fileio->m_endheight);

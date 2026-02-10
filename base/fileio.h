@@ -33,15 +33,19 @@ public:
 
     // map info, the dimension should be the same with input and output
 
-    std::string proj; // projection info
-    std::string geog; // geometric info
+    // std::string proj; // projection info
+    // std::string geog; // geometric info
 
     double trans_meteo[6];
     std::string proj_meteo;
+
     double trans_global[6];
     std::string proj_global;
+
     double trans_regional[6];
     std::string proj_regional;
+
+
     double trans_sat[6];
     std::string proj_sat;
 
@@ -49,14 +53,18 @@ public:
     int m_width;  // global range
     int m_height; // global range
     int m_node; // time node
+
     int m_width_region; // regional range
     int m_height_region; // regional range
+
     int m_width_sat; // satellite range
     int m_height_sat; // satellite range
-    int m_meteowidth; // meteo range
-    int m_meteoheight; // meteo range
-    int m_workwidth;
-    int m_workheight;
+
+    int m_width_meteo; // meteo range
+    int m_height_meteo; // meteo range
+
+    // int m_workwidth;
+    // int m_workheight;
     int m_islai;
     int m_issm;
     int m_areakey;

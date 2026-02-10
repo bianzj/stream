@@ -2,17 +2,20 @@
 #include <memory>
 #include <vector>
 #include <fstream>
-#include "structs.h"
-#include "utils.h"
-#include "fileio.h"
-#include "modelio.h"
+
+#include "base/structs.h"
+#include "base/utils.h"
+#include "base/fileio.h"
+#include "base/modelio.h"
+#include "base/model.h"
+#include "base/engine.h"
+#include "base/geometry.h"
+
 #include <fstream>
 #include <iostream>
 #include <pthread.h>
 #include "gdal.h"
-#include "model.h"
-#include "engine.h"
-#include "geometry.h"
+
 #include <ctime>
 
 int main(int argc,char* argv[])
@@ -27,7 +30,7 @@ int main(int argc,char* argv[])
 //-----------------------------------------------
 // huabei area: 1km: width 400-500 180-280 *25
 //-----------------------------------------------
-    std::string infilepath = "/home/hero/4-stream_simulation/fourstream/stream_test/input-vcmax-without-urban.txt";
+    std::string infilepath = "/home/hero/4-stream_simulation/fourstream/stream_test/input-vcmax.txt";
 
     Engine engine;
     engine.initProject(infilepath);

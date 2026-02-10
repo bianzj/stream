@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.27)
-project(stream_github)
+project(stream1.0)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -7,52 +7,52 @@ set(CMAKE_CXX_STANDARD 20)
 
 include_directories(.)
 
-add_executable(stream_github
-        main.cpp
-        aerodynamic.h
-        biochemical.cpp
-        biochemical.h
-        control.h
-        defined.cpp
-        defined.h
-        eb.cpp
-        eb.h
-        engine.h
-        engine.cpp
-        evapo.cpp
-        evapo.h
-        fileio.cpp
-        fileio.h
-        leafopt.h
-        growth.h
-        pixelio.cpp
-        pixelio.h
-        rt.cpp
-        rt.h
-        scifuns.h
-        geometry.h
-        structs.h
-        utils.cpp
-        utils.h
-        modelio.h
-        modelio.cpp
-        thread_pool.hpp
-        thread_pool.cpp
-        model.h
-        model.cpp
-        aerodynamic.cpp
-        scifuns.cpp
-        leafopt.cpp
-        geometry.cpp
-        sensor.cpp
-        sensor.h
-        soilopt.cpp
-        spa.cpp
-        spa.h
+add_executable(stream
+        global/main.cpp
+        base/aerodynamic.h
+        base/biochemical.cpp
+        base/biochemical.h
+        base/control.h
+        base/defined.cpp
+        base/defined.h
+        base/eb.cpp
+        base/eb.h
+        base/engine.h
+        base/engine.cpp
+        base/evapo.cpp
+        base/evapo.h
+        base/fileio.cpp
+        base/fileio.h
+        base/leafopt.h
+        base/growth.h
+        base/pixelio.cpp
+        base/pixelio.h
+        base/rt.cpp
+        base/rt.h
+        base/scifuns.h
+        base/geometry.h
+        base/structs.h
+        base/utils.cpp
+        base/utils.h
+        base/modelio.h
+        base/modelio.cpp
+        base/thread_pool.hpp
+        base/thread_pool.cpp
+        base/model.h
+        base/model.cpp
+        base/aerodynamic.cpp
+        base/scifuns.cpp
+        base/leafopt.cpp
+        base/geometry.cpp
+        base/sensor.cpp
+        base/sensor.h
+        base/soilopt.cpp
+        base/spa.cpp
+        base/spa.h
 )
 
 find_package(GDAL CONFIG REQUIRED)
 
-target_link_libraries(stream_github PRIVATE GDAL::GDAL)
+target_link_libraries(stream PRIVATE GDAL::GDAL)
 
 

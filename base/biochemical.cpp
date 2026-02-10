@@ -10,7 +10,6 @@ void biochemical_Farquhar(Canopy canopy, LeafBio leafbio, SoilSet soilset, Therm
     int type = canopy.type;
     float fPAR = 1;
 
-//    if(type == 0)
     if(type == 16)
     {
         //----------------------
@@ -19,8 +18,6 @@ void biochemical_Farquhar(Canopy canopy, LeafBio leafbio, SoilSet soilset, Therm
         // 如果是裸土，直接设置土壤表面电阻
         biostate.rss = soilset.rss;
 
-
-//    }else if(type ==1)
     }else
     {
         // 如果是植被，除了设置土壤表面电阻，还需要计算叶片的相关参数
@@ -565,4 +562,7 @@ void BioChemical::suresist_urban(std::shared_ptr<Defined> defined, std::shared_p
     biostate.rssroof = 3662.8562;
     biostate.rsswall = 3662.8562;
     biostate.rssstreet = 3662.8562;
+    // biostate.rssroof = 200.0;
+    // biostate.rsswall = 200.0;
+    // biostate.rssstreet = 200.0;
 }

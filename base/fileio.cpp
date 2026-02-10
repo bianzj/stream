@@ -54,26 +54,13 @@ void FileIO::readMeta(std::string infilepath)
          fields = Utils::splitt(line,deli);
          m_tfile = fields[0]; //t 表示一天中的时间点，以小数形式表示一天中的比例
          m_tafile = fields[1]; //空气温度
-         m_eafile = fields[2]; //蒸散发
+         m_eafile = fields[2]; //空气湿度
          m_pfile = fields[3]; //气压
          m_ufile = fields[4]; //风速
-         m_Rinfile = fields[5]; //入射辐射
-         m_Rlifile = fields[6]; //出射辐射
-
-         // 第七段：读取 LAI 相关配置
-         getline(infile,line);
-         getline(infile,line);
-         fields = Utils::splitt(line,deli);
-         m_islai = atoi(fields[0].c_str()); //判断是否存在lai文件，如果有则使用后续文件设置路径
-         m_laifile = fields[1];
-         m_laidir = fields[2];
-
-         // 第八段：读取土壤水分相关配置
-         getline(infile,line);
-         getline(infile,line);
-         fields = Utils::splitt(line,deli);
-         m_issm = atoi(fields[0].c_str());
-         m_smfile = fields[1];
+         m_Rinfile = fields[5]; //入射短波辐射
+         m_Rlifile = fields[6]; //入射长波辐射
+         m_laifile = fields[7];
+         m_smfile = fields[8];
 
          // 第九段：读取开始和结束日期
          getline(infile,line);
@@ -93,6 +80,25 @@ void FileIO::readMeta(std::string infilepath)
          m_endwidth = atoi(fields[2].c_str());
          m_startheight = atoi(fields[3].c_str());
          m_endheight = atoi(fields[4].c_str());
+
+
+         // 第七段：读取 LAI 相关配置
+         getline(infile,line);
+         getline(infile,line);
+         fields = Utils::splitt(line,deli);
+         m_islai = atoi(fields[0].c_str()); //判断是否存在lai文件，如果有则使用后续文件设置路径
+         // m_laifile = fields[1];
+         m_laidir = fields[1];
+         m_laifile = fields[2];
+
+         // 第八段：读取土壤水分相关配置
+         getline(infile,line);
+         getline(infile,line);
+         fields = Utils::splitt(line,deli);
+         m_issm = atoi(fields[0].c_str());
+         m_smdir = fields[1];
+         m_smfile = fields[2];
+
 
          // 第十一段：读取全局辅助数据相关配置
          getline(infile,line);
@@ -115,13 +121,13 @@ void FileIO::readMeta(std::string infilepath)
          m_vcmaxfile = fields[1];
 
          // 第十四段：读取卫星观测方向亮温相关配置
-         getline(infile,line);
-         getline(infile,line);
-         fields = Utils::splitt(line,deli);
-         m_satmode = atoi(fields[0].c_str()); //判断是否运行卫星观测模拟并设置，0为不进行卫星观测模拟，1为先模拟研究区域再搜索卫星观测像元位置，2为先搜索卫星观测像元位置再进行模拟
-         m_satdir = fields[1];
-         m_satName = fields[2];
-         m_nadirobliq = fields[3];
+         // getline(infile,line);
+         // getline(infile,line);
+         // fields = Utils::splitt(line,deli);
+         // m_satmode = atoi(fields[0].c_str()); //判断是否运行卫星观测模拟并设置，0为不进行卫星观测模拟，1为先模拟研究区域再搜索卫星观测像元位置，2为先搜索卫星观测像元位置再进行模拟
+         // m_satdir = fields[1];
+         // m_satName = fields[2];
+         // m_nadirobliq = fields[3];
 
 
          std::cout<<"Finish Reading Meta"<<std::endl;
@@ -137,7 +143,7 @@ void FileIO::readGeodata()
 
     // 读取ERA5数据的地理范围和投影信息数据
     std::string infilename0= m_geoinfoDir + m_era5file;
-    Utils::readImageinout11(infilename0,m_meteoType,m_meteowidth,m_meteoheight,nband, trans_meteo, proj_meteo);
+    Utils::readImageinout11(infilename0,m_meteoType,m_width_meteo,m_height_meteo,nband, trans_meteo, proj_meteo);
     std::cout<<"read meteoType.tif"<<std::endl;
 
     // 读取全局的地理范围和投影信息数据
@@ -157,20 +163,6 @@ void FileIO::readGeodata()
     // Utils::readImageinout1(infilename3,m_vType,m_width,m_height,nband);
     Utils::readImageinout11(infilename4,m_vType,m_width,m_height,nband, trans_global, proj_global);
     std::cout<<"read type.tif"<<std::endl;
-
-//    //读取研究区的地理范围和投影信息数据
-//    std::string infilename5= m_geoinfoDir + m_regionfile;
-//    if(infilename4 != infilename5)
-//    {
-//        Utils::readImageinout11(infilename5,m_regionType,m_width_region,m_height_region,nband, trans_regional, proj_regional);
-//        std::cout<<"read regionType.tif"<<std::endl;
-//    }else
-//    {
-//        m_width_region = m_width;
-//        m_height_region = m_height;
-//        std::copy(std::begin(trans_global), std::end(trans_global), std::begin(trans_regional));
-//        proj_regional = proj_global;
-//    }
 
 }
 
@@ -265,20 +257,11 @@ int FileIO::readMeteodata(int year, int doy) {
     }else if(m_issm == 1)
     {
         std::cout<<"soil moisture error!!!"<<std::endl;
-//        int ind_doy = (doy-1)/4;
-//        int stddoy = ind_doy*4+1;
-//        std::ostringstream  oss_doy_std;
-//        oss_doy_std << std::setw(3)<<std::setfill('0')<<stddoy;
-//        std::string infilename12 = m_laidir + year_str + "/SM_" + year_str + oss_doy_std.str() + ".h5";
-//        Utils::readHdf5image1(infilename12, "data", m_vLai, width, height, nband);
     }
 
     //-------------------------------------------------------
     //------ 1440 * 720 <-> 36000*18000
     //-------------------------------------------------------
-
-//    std::string infilename5= m_projectDir + m_tfile;
-//    Utils::readImageinout(infilename5,m_vT,width,height,nband);
 
     std::string infilename13 = m_wdirnew + m_tfile;
     Utils::readascfileinout(infilename13,0,0,m_vT,m_node);
@@ -289,7 +272,7 @@ int FileIO::readMeteodata(int year, int doy) {
     std::cout<<"read u.h5"<<std::endl;
 
     std::string infilename6= m_wdirnew + m_tafile;
-    Utils::readHdf5image(infilename6,"data",m_vTa,m_meteowidth,m_meteoheight,nband);
+    Utils::readHdf5image(infilename6,"data",m_vTa,m_width_meteo,m_height_meteo,nband);
     std::cout<<"read ta.h5"<<std::endl;
 
     std::string infilename66= m_wdirnew + m_eafile;
@@ -308,52 +291,33 @@ int FileIO::readMeteodata(int year, int doy) {
     Utils::readHdf5image(infilename10,"data",m_vP,width,height,nband);
     std::cout<<"read p.h5"<<std::endl;
 
+    if (m_isvcmax == 1) {
+        std::vector<float> m_vcmax1, m_vcmax2;
+        const int base_doy = 1, doy_interval = 8;
+        const int vcmax_doy1 = base_doy + ((doy - base_doy) / doy_interval) * doy_interval;
+        const int vcmax_doy2 = std::min(vcmax_doy1 + doy_interval, 365);
 
-    if (m_isvcmax == 1){
-        std::vector<float> m_vcmax1;
-        std::vector<float> m_vcmax2;
-        // 假设 vcmax 产品从doy=1开始，每8天一个产品
-        int base_doy = 1; // 第一个产品的doy
-        int doy_interval = 8; // 产品间隔为8天
-        int vcmax_doy1 = base_doy + ((doy - base_doy) / doy_interval) * doy_interval; // 最近的较小日期
-        int vcmax_doy2 = vcmax_doy1 + doy_interval; // 第二个日期（更大的）
+        // Calculate weights
+        const bool exact1 = (doy == vcmax_doy1), exact2 = (doy == vcmax_doy2);
+        const float weight1 = exact1 ? 1.0f : exact2 ? 0.0f :
+                             (1.0f / fabsf(doy - vcmax_doy1));
+        const float weight2 = exact2 ? 1.0f : exact1 ? 0.0f :
+                             (1.0f / fabsf(doy - vcmax_doy2));
+        const float norm = 1.0f / (weight1 + weight2);
 
-        // 根据doy和vcmax_doy1、vcmax_doy2计算加权系数
-        float weight1 = (doy != vcmax_doy1) ? 1.0f / abs(doy - vcmax_doy1) : 0.0f; // 反比例权重，避免除以零
-        float weight2 = (doy != vcmax_doy2) ? 1.0f / abs(doy - vcmax_doy2) : 0.0f;
+        // Read and interpolate
+        auto readVcmax = [&](int day) {
+            return m_globaldir + "vcmax/" + std::to_string(year) + "/InterpVcmax.A" +
+                   std::to_string(year) + "001.Vcmax" +
+                   (day < 100 ? (day < 10 ? "00" : "0") : "") + std::to_string(day) + ".tif";
+        };
+        Utils::readImageinout1(readVcmax(vcmax_doy1), m_vcmax1, width, height, nband);
+        Utils::readImageinout1(readVcmax(vcmax_doy2), m_vcmax2, width, height, nband);
 
-        // 权重归一化
-        float weight_sum = weight1 + weight2;
-
-        // 避免除以零，确保权重归一化时不会出错
-        if (weight_sum > 0.0f) {
-            weight1 /= weight_sum;
-            weight2 /= weight_sum;
-        } else {
-            // 如果权重和为零，设置权重为默认值
-            weight1 = 0.5f;
-            weight2 = 0.5f;
-        }
-
-        // 读取vcmax1和vcmax2产品
-        // std::string infilenamevcmax1 = m_globaldir + "vcmax/" + std::to_string(year)  + "/InterpVcmax.A" + std::to_string(year) + "001.Vcmax" + std::to_string(vcmax_doy1) + ".tif";
-        // std::string infilenamevcmax2 = m_globaldir + "vcmax/" + std::to_string(year) + "/InterpVcmax.A" + std::to_string(year) + "001.Vcmax" + std::to_string(vcmax_doy2) + ".tif";;
-        std::string infilenamevcmax1 = m_globaldir + "vcmax/" + std::to_string(year) + "/InterpVcmax.A" + std::to_string(year) + "001.Vcmax" + (vcmax_doy1 < 10 ? "00" : (vcmax_doy1 < 100 ? "0" : "")) + std::to_string(vcmax_doy1) + ".tif";
-        std::string infilenamevcmax2 = m_globaldir + "vcmax/" + std::to_string(year) + "/InterpVcmax.A" + std::to_string(year) + "001.Vcmax" + (vcmax_doy2 < 10 ? "00" : (vcmax_doy2 < 100 ? "0" : "")) + std::to_string(vcmax_doy2) + ".tif";
-
-        Utils::readImageinout1(infilenamevcmax1, m_vcmax1, width, height, nband);
-        Utils::readImageinout1(infilenamevcmax2, m_vcmax2, width, height, nband);
-
-        // 确保 m_Vcmax 已经分配足够空间，大小与 m_vcmax1 和 m_vcmax2 一致
-        if (m_Vcmax.size() != m_vcmax1.size()) {
-            m_Vcmax.resize(m_vcmax1.size(), 0.0f);  // Resize to match the size of m_vcmax1
-        }
-        // 直接对 fileio->m_Vcmax 进行加权计算
-        for (size_t i = 0; i < m_vcmax1.size(); ++i) {
-            m_Vcmax[i] = weight1 * m_vcmax1[i] + weight2 * m_vcmax2[i];
-        }
-
-        std::cout<<"read vcmax file"<<std::endl;
+        // Interpolate
+        m_Vcmax.resize(m_vcmax1.size());
+        std::transform(m_vcmax1.begin(), m_vcmax1.end(), m_vcmax2.begin(), m_Vcmax.begin(),
+            [=](float a, float b) { return (weight1 * a + weight2 * b) * norm; });
     }
 
     return 0;
@@ -425,8 +389,8 @@ void FileIO::saveSkt(int year, int doy, int knode) {
 
     }
 
-    int height = m_workheight;
-    int width = m_workwidth;
+    int height = m_height_region;
+    int width = m_width_region;
     double trans[6];
     int n = m_node;
     if(knode >= 0) n = 1;
@@ -462,8 +426,8 @@ void FileIO::saveDBT(int year, int doy, int knode) {
 
     }
 
-    int height = m_workheight;
-    int width = m_workwidth;
+    int height = m_height_region;
+    int width = m_width_region;
     double trans[6];
     int n = m_node;
     if(knode >= 0) n = 1;
@@ -491,26 +455,26 @@ void FileIO::readDefined(std::shared_ptr<ModelIO> &modelio) {
         std::string infileName = m_definedDir + "/optipar_new.csv";
         int num = 1;
 
-    // 从 CSV 文件中读取光谱参数到 definedio 的 m_optCoeff 成员
-    Utils::readcsvfileinout(infileName,1,0,definedio->m_optCoeff.wl_,num);
-    Utils::readcsvfileinout(infileName,1,1,definedio->m_optCoeff.nr_,num);
-    Utils::readcsvfileinout(infileName,1,2,definedio->m_optCoeff.kab_,num);
-    Utils::readcsvfileinout(infileName,1,3,definedio->m_optCoeff.kca_,num);
-    Utils::readcsvfileinout(infileName,1,4,definedio->m_optCoeff.ks_,num);
-    Utils::readcsvfileinout(infileName,1,5,definedio->m_optCoeff.kw_,num);
-    Utils::readcsvfileinout(infileName,1,6,definedio->m_optCoeff.kdm_,num);
-    Utils::readcsvfileinout(infileName,1,7,definedio->m_optCoeff.phiI_,num);
-    Utils::readcsvfileinout(infileName,1,8,definedio->m_optCoeff.phiII_,num);
-    Utils::readcsvfileinout(infileName,1,9,definedio->m_optCoeff.kcaV_,num);
-    Utils::readcsvfileinout(infileName,1,10,definedio->m_optCoeff.kcaZ_,num);
-    Utils::readcsvfileinout(infileName,1,11,definedio->m_optCoeff.kcant_,num);
-    Utils::readcsvfileinout(infileName,1,12,definedio->m_optCoeff.kcaV2_,num);
-    Utils::readcsvfileinout(infileName,1,13,definedio->m_optCoeff.phi_,num);
-    Utils::readcsvfileinout(infileName,1,14,definedio->m_optCoeff.gsv1_,num);
-    Utils::readcsvfileinout(infileName,1,15,definedio->m_optCoeff.gsv2_,num);
-    Utils::readcsvfileinout(infileName,1,16,definedio->m_optCoeff.gsv3_,num);
-    Utils::readcsvfileinout(infileName,1,17,definedio->m_optCoeff.nw_,num);
-    // return false;
+        // 从 CSV 文件中读取光谱参数到 definedio 的 m_optCoeff 成员
+        Utils::readcsvfileinout(infileName,1,0,definedio->m_optCoeff.wl_,num);
+        Utils::readcsvfileinout(infileName,1,1,definedio->m_optCoeff.nr_,num);
+        Utils::readcsvfileinout(infileName,1,2,definedio->m_optCoeff.kab_,num);
+        Utils::readcsvfileinout(infileName,1,3,definedio->m_optCoeff.kca_,num);
+        Utils::readcsvfileinout(infileName,1,4,definedio->m_optCoeff.ks_,num);
+        Utils::readcsvfileinout(infileName,1,5,definedio->m_optCoeff.kw_,num);
+        Utils::readcsvfileinout(infileName,1,6,definedio->m_optCoeff.kdm_,num);
+        Utils::readcsvfileinout(infileName,1,7,definedio->m_optCoeff.phiI_,num);
+        Utils::readcsvfileinout(infileName,1,8,definedio->m_optCoeff.phiII_,num);
+        Utils::readcsvfileinout(infileName,1,9,definedio->m_optCoeff.kcaV_,num);
+        Utils::readcsvfileinout(infileName,1,10,definedio->m_optCoeff.kcaZ_,num);
+        Utils::readcsvfileinout(infileName,1,11,definedio->m_optCoeff.kcant_,num);
+        Utils::readcsvfileinout(infileName,1,12,definedio->m_optCoeff.kcaV2_,num);
+        Utils::readcsvfileinout(infileName,1,13,definedio->m_optCoeff.phi_,num);
+        Utils::readcsvfileinout(infileName,1,14,definedio->m_optCoeff.gsv1_,num);
+        Utils::readcsvfileinout(infileName,1,15,definedio->m_optCoeff.gsv2_,num);
+        Utils::readcsvfileinout(infileName,1,16,definedio->m_optCoeff.gsv3_,num);
+        Utils::readcsvfileinout(infileName,1,17,definedio->m_optCoeff.nw_,num);
+        // return false;
 
 
         //----------------------------------
@@ -525,7 +489,6 @@ void FileIO::readDefined(std::shared_ptr<ModelIO> &modelio) {
         if(infile.is_open())
         {
             // 读取并解析 defined.txt 文件中的数据
-
             // 读取、解析和设置冠层参数（canopy parameters）
             getline(infile,line);
             getline(infile,line);
@@ -630,6 +593,9 @@ void FileIO::readDefined(std::shared_ptr<ModelIO> &modelio) {
 
         }else std::cout<<"Unable to open the fileinput "<<std::endl;
         infile.close();
+
+
+
 
         //分类别计算植被和土壤谱数据
         for (int i = IGBP::unclassified; i < IGBP::fill_value + 1; i++)

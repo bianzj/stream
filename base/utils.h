@@ -19,6 +19,10 @@
 #include "netcdf.h"
 #include <hdf5.h>
 #include <H5Cpp.h>
+#include <netcdf>
+
+using namespace netCDF;
+using namespace netCDF::exceptions;
 
 
 namespace Utils {
@@ -97,5 +101,15 @@ namespace Utils {
 	void calculatePixelRange(double trans1[6], const std::string &proj1, int width1, int height1,
 						  double trans2[6], const std::string &proj2, int width2, int height2,
 						  int &startWidth, int &startHeight, int &endWidth, int &endHeight);
+
+	bool readNcImage1(std::string infilename, std::string objname, std::vector<float> &c,
+						  int &width, int &height, int &nband);
+	bool writeNcImage1(std::string outfilepath, std::string objname, std::vector<float> &c,
+					   int width, int height);
+	bool readNcImage(std::string infilename, std::string objname, std::vector<std::vector<float>> &c,
+					 int &width, int &height, int &nband);
+	bool writeNcImage(std::string outfilepath, std::string objname, std::vector<std::vector<float>> &c,
+					  int width, int height, int nband) ;
+
 
 }

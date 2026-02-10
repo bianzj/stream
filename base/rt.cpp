@@ -3,10 +3,7 @@
 #include "rt.h"
 #include <numeric> // 添加这个头文件以使用 std::accumulate
 
-
-
-
-float Jfunc1(float k, float l, float t)
+float RT::Jfunc1(float k, float l, float t)
 {
     float del = (k - l) * t;  // 计算k和l的差值与时间t的乘积，del代表了这个差值的影响
     float Jout = del;         // 初始化Jout为del
@@ -27,113 +24,18 @@ float Jfunc1(float k, float l, float t)
     return Jout;  // 返回计算结果
 }
 
-float Jfunc2(float k, float l, float t)
+float RT::Jfunc2(float k, float l, float t)
 {
     // 计算k和l之和与时间t的乘积的指数衰减，返回该值
     return (1.0 - exp(-(k + l) * t)) / (k + l);
 }
 
-float Jfunc3(float k,float l,float t)
+float RT::Jfunc3(float k,float l,float t)
 {
     return (1.0-exp(-(k+l)*t))/(k+l);
 }
 
-
-//void volscatt(float sza, float vza,float raa, float ttl, float *chi_s,float *chi_o,float *frho,float *ftau)
-//{
-//
-//    float rd = 3.1415926/180.0;
-//    float costs = cos(rd * sza);
-//    float costo = cos(rd * vza);
-//    float sints = sin(rd * sza);
-//    float sinto = sin(rd * vza);
-//    float cosraa = cos(rd * raa);
-//    float raar = rd * raa;
-//    float costl = cos(rd * ttl);
-//    float sintl = sin(rd * ttl);
-//    float cs = costl * costs;
-//    float co = costl * costo;
-//    float ss = sintl * sints;
-//    float so = sintl * sinto;
-//
-//    float cosbts = 5.0;
-//    float cosbto = 5.0;
-//    float bts =0,ds = 0, bto,doo;
-//
-//    if (abs(ss) > 1e-6)
-//        cosbts = -cs /ss;
-//    if (abs(so) > 1e-6)
-//        cosbto = -co /so;
-//    if (abs(cosbts) < 1.0)
-//    {
-//        bts = acos(cosbts);
-//        ds = ss;
-//    }
-//    else
-//    {
-//        bts =3.1415926;
-//        ds = cs;
-//        (*chi_s) = 2.0 /PI * ((bts -PI * 0.5) * cs + sin(bts) * ss);
-//    }
-//
-//    if (abs(cosbto) < 1.0)
-//    {
-//        bto = acos(cosbto);
-//        doo = so;
-//    }
-//    else
-//    {
-//        if (vza < 90.0)
-//        {
-//            bto =PI;
-//            doo = co;
-//        }
-//        else
-//        {
-//            bto = 0.0;
-//            doo = -co;
-//        }
-//    }
-//    (*chi_o) = 2.0 /PI * ((bto -PI * 0.5) * co + sin(bto) * so);
-//    float btran1 = abs(bts - bto);
-//    float btran2 = PI - abs(bts + bto - PI);
-//
-//    float bt1,bt2,bt3;
-//    if (raar <= btran1)
-//    {
-//        bt1 = raar;
-//        bt2 = btran1;
-//        bt3 = btran2;
-//    }
-//    else
-//    {
-//        bt1 = btran1;
-//        if (raar <= btran2)
-//        {
-//            bt2 = raar;
-//            bt3 = btran2;
-//        }
-//        else
-//        {
-//            bt2 = btran2;
-//            bt3 = raar;
-//        }
-//    }
-//    float t1,t2;
-//    t1 = 2.0 * cs * co + ss * so * cosraa;
-//    t2 = 0.0;
-//    if (bt2 > 0.0)
-//        t2= sin(bt2) * (2.0 * ds * doo+ss * so * cos(bt1) * cos(bt3));
-//
-//    float denom = 2.0 *PI *PI;
-//    *frho = ((PI-bt2) * t1 + t2) / denom;
-//    *ftau = (-bt2 * t1 + t2) / denom;
-//
-//    if (*frho < 0.0) *frho=0.0;
-//    if (*ftau < 0.0) *ftau=0.0;
-//}
-
-void volscatt(float sza, float vza, float raa, float ttl, float *chi_s, float *chi_o, float *frho, float *ftau)
+void RT::volscatt(float sza, float vza, float raa, float ttl, float *chi_s, float *chi_o, float *frho, float *ftau)
 {
     // rd: 角度与弧度的转换常量，3.1415926/180.0 表示 π/180，用于将角度转换为弧度
     float rd = 3.1415926 / 180.0;
@@ -252,7 +154,7 @@ void volscatt(float sza, float vza, float raa, float ttl, float *chi_s, float *c
     if (*ftau < 0.0) *ftau = 0.0;  // 如果透过率小于零，设为零
 }
 
-void cal_LIDF(float ala, float *freq)
+void RT::cal_LIDF(float ala, float *freq)
 {
     // 定义两个数组tx1和tx2，这些值表示叶片倾斜角度的范围：每个角度区间的起始和结束值。
     float tx2[18] = {0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85};
@@ -333,113 +235,7 @@ void cal_LIDF(float ala, float *freq)
         freq[i] = freq[i] / sum0;
 }
 
-//void diffuseScatter_VNIR(float lai, float rho,float tau,float rs,float sza,float Esun,float Esky,float *diffuserad_leaf,float *diffuserad_soil, float vza =0,float raa = 0,float thm=53)
-//{
-//
-//    float rd = PI/180.0;
-//    float epsc = 1-rho-tau;
-//    float epss = 1-rs;
-//    float cts = cos(sza*rd);
-//    float cto = cos(vza*rd);
-//    float ctscto = cts*cto;
-//    float tan_vza = tan(vza*rd);
-//    float sin_sza = cos(sza*rd);
-//    float tan_sza = tan(sza*rd);
-//
-//    float    ks = 0.0;
-//    float    ko = 0.0;
-//    float    bf = 0.0;
-//    float    sob = 0.0;
-//    float    sof = 0.0;
-//    float freq[18];
-//    cal_LIDF(thm,freq);
-//    float na = 18;
-//    float dlza = 5.0;
-//
-//    for(int k =0;k<na;k++)
-//    {
-//        float ttl = 2.5+5.0*k;
-//        float ctl = cos(ttl * rd);
-//        float chi_s,chi_o,frho,ftau;
-//
-//        volscatt(sza, vza, raa, ttl, &chi_s, &chi_o, &frho, &ftau);
-//
-//        float ksli = chi_s / cts;
-//        float koli = chi_o / cto;
-//
-//
-//        float sobli = frho * PI / ctscto;
-//        float sofli = ftau * PI / ctscto;
-//        float bfli = ctl*ctl;
-//
-//        ks = ks + ksli*freq[k];
-//        ko = ko + koli*freq[k];
-//
-//        bfli = ctl * ctl;
-//        bf = bf + bfli*freq[k];
-//        sob = sob + sobli * freq[k];
-//        sof = sof + sofli * freq[k];
-//    }
-//
-//    float sdb = 0.5 * (ks + bf);
-//    float sdf = 0.5 * (ks - bf);
-//    float dob = 0.5 * (ko + bf);
-//    float dof = 0.5 * (ko - bf);
-//    float ddb = 0.5 * (1.0 + bf);
-//    float ddf = 0.5 * (1.0 - bf);
-//
-//    float sigb = ddb * rho + ddf * tau;
-//    float sigf = ddf * rho + ddb * tau;
-//    float att = 1.0 - sigf;
-//    float m2 = (att + sigb) * (att - sigb);
-//
-//    // ind = (m2 > 0)
-//    // m2 = m2 * ind
-//    float m = sqrt(m2);
-//    float sb = sdb * rho + sdf * tau;
-//    float sf = sdf * rho + sdb * tau;
-//    float vb = dob * rho + dof * tau;
-//    float vf = dof * rho + dob * tau;
-//    float w = sob * rho + sof * tau;
-//    float e1 = exp(-m * lai);
-//    float e2 = e1 * e1;
-//    float rinf = (att - m) / sigb;
-//    float rinf2 = rinf * rinf;
-//    float re = rinf * e1;
-//    float denom = 1.0 - rinf2 * e2;
-//    float J1ks = Jfunc1(ks, m, lai);
-//    float J2ks = Jfunc2(ks, m, lai);
-//    float J1ko = Jfunc1(ko, m, lai);
-//    float J2ko = Jfunc2(ko, m, lai);
-//    float Ps = (sf + sb * rinf) * J1ks;
-//    float Qs = (sf * rinf + sb) * J2ks;
-//    float Pv = (vf + vb * rinf) * J1ko;
-//    float Qv = (vf * rinf + vb) * J2ko;
-//
-//    float rho_dd = rinf * (1.0 - e2) / denom;
-//    float tau_dd = (1.0 - rinf2) * e1 / denom;
-//    float tau_sd = (Ps - re * Qs) / denom;
-//    float rho_sd = (Qs - re * Ps) / denom;
-//    float tau_do = (Pv - re * Qv) / denom;
-//    float rho_do = (Qv - re * Pv) / denom;
-//
-//    float tau_ss = exp(-ks*lai);
-//    float tau_oo = exp(-ko*lai);
-//
-//    float rsd     = rho_sd + (tau_ss + tau_sd)*rs*tau_dd/denom;
-//    float rdd     = rho_dd + tau_dd*rs*tau_dd/denom;
-//
-//    // soil layer upper
-//    float Eplu_1 = rs*((tau_ss+tau_sd)*Esun+tau_dd*Esky)/denom;
-//    float E0 = rho_sd *Esun + rho_dd*Esky + tau_dd*Eplu_1;
-//    float Emin_1 = tau_sd *Esun + tau_dd*Esky + rho_dd*Eplu_1;
-//
-//
-//    *diffuserad_soil = Emin_1 * epss;
-//    *diffuserad_leaf = E0 * epsc;
-//}
-
-void diffuseScatter_VNIR(float lai, float rho, float tau, float rs, float sza, float Esun, float Esky, float *diffuserad_leaf, float *diffuserad_soil, float vza = 0, float raa = 0, float thm = 53)
+void RT::diffuseScatter_VNIR(float lai, float rho, float tau, float rs, float sza, float Esun, float Esky, float *diffuserad_leaf, float *diffuserad_soil, float vza, float raa , float thm )
 {
     // rd: 弧度转换常量，PI/180.0 用于角度转换为弧度
     float rd = PI / 180.0;
@@ -601,29 +397,7 @@ void diffuseScatter_VNIR(float lai, float rho, float tau, float rs, float sza, f
     *diffuserad_leaf = E0 * epsc;
 }
 
-
-void diffuseScatter_VNIR_Urban(float ref_roof, float ref_wall, float ref_street, float svf_s, float svf_w, float frs, float frh, float fws, float fwh, float fss, float fsh, float BAI, float sza,float Esun,float Esky,float *diffuserad_roof,float *diffuserad_wall, float *diffuserad_street, float vza =0,float raa = 0,float thm=53)
-{
-    // 计算墙壁吸收的散射能量
-    float p= 0.88 * (1 - exp(-0.7 * pow(BAI, 0.75))); //需要计算，先写定值
-    float ud = (1 - p) / 2.0; //不准确但是这里简单认为向上向下概率相同
-    float rho_wall = ((1 - svf_w) * ref_wall * ud);
-
-    *diffuserad_roof = 0;
-
-    float Lwall1 = (Esun * ref_wall * p * (1 - ref_wall)) / (1 - ref_wall * p);
-    float Lwall21 = (Esun * (fwh + fws) * ref_wall * ud) / (1 - ref_wall * p);
-    float Lwall2 = ((Lwall21 + Esun) * ref_street * (1 - rho_wall)) / (1 - ref_street * rho_wall);
-    *diffuserad_wall = Lwall1 + Lwall2;
-
-    float Lstreet11 = (Esun * (fwh + fws) * ref_wall * ud) / (1 - ref_wall * p);
-    float Lstreet1 = (Lstreet11 * (1 - ref_street)) / (1 - ref_street * rho_wall);
-    float Lstreet2 = (Esun * (fss + fsh) *  (1 - ref_street)) / (1 - ref_street * rho_wall);
-    *diffuserad_street = Lstreet1 + Lstreet2;
-
-}
-
-void diffuseScatter_TIR(float lai, float rho,float tau,float rs,float sza,float Esun,float Esky,float Tss, float Tsh, float Tvs,float Tvh, float *diffuserad_leaf,float *diffuserad_soil, float vza =0,float raa = 0,float thm=53)
+void RT::diffuseScatter_TIR(float lai, float rho,float tau,float rs,float sza,float Esun,float Esky,float Tss, float Tsh, float Tvs,float Tvh, float *diffuserad_leaf,float *diffuserad_soil, float vza,float raa ,float thm)
 {
 
     float rd = 3.1415926/180.0;
@@ -757,61 +531,30 @@ void diffuseScatter_TIR(float lai, float rho,float tau,float rs,float sza,float 
     *diffuserad_leaf = Eplu * epsc+f1top*epsc;
 }
 
-// void diffuseScatter_TIR_urban(float bai, float svf_w, float svf_s, float rrho,float wrho,float srho,float sza,float Esun,float Esky,float Trs, float Trh, float Tws,float Twh, float Tss, float Tsh, float *diffuserad_roof, float *diffuserad_wall,  float *diffuserad_street, float vza =0,float raa = 0,float thm=53)
-// {
-//
-//     float rd = 3.1415926/180.0;
-//     float epsr = 1-rrho;
-//     float epsw = 1-wrho;
-//     float epss = 1-srho;
-//
-//     float cts = cos(sza*rd);
-//     float cto = cos(vza*rd);
-//     float ctscto = cts*cto;
-//     float tan_vza = tan(vza*rd);
-//     float sin_sza = cos(sza*rd);
-//     float tan_sza = tan(sza*rd);
-//
-//     float Ers = SCI::StefanBoltzmann(Trs);
-//     float Erh = SCI::StefanBoltzmann(Trh);
-//     float Ews = SCI::StefanBoltzmann(Tws);
-//     float Ewh = SCI::StefanBoltzmann(Twh);
-//     float Ess = SCI::StefanBoltzmann(Tss);
-//     float Esh = SCI::StefanBoltzmann(Tsh);
-//
-//     // 混合辐射源的权重（假设50%均匀分布）
-//     float prs = 0.5, pws = 0.5, pss = 0.5;
-//     float Er = Ers * prs + Esh * (1 - prs);  // 混合太阳辐射
-//     float Ew = Ews * pws + Ewh * (1 - pws);  // 混合太阳辐射
-//     float Es = Ess * pss + Esh * (1 - pss);  // 混合太阳辐射
-//
-//     float term1 = epss * svf_s * Esky;
-//     float term3 = epss * epsw * (1 - svf_s) * Ew;
-//     float term4 = epss * (1 - epsw) * (1 - svf_s) * svf_w * Esky;
-//     float term5 = epss * epsw * (1 - epsw) * (1 - svf_s) * (1 - 2 * svf_w) * Ew;
-//     float term6 = epss * (1 - epsw) * (1 - svf_s) * svf_w * epss * Es;
-//     // 总的 L_r^*
-//     float diffuse_street = term1 + term3 + term4 + term5 + term6;
-//
-//     float temp1 = epsw * svf_w * Esky;
-//     float temp3 = epsw * svf_w * epss * Es;
-//     float temp4 = epsw * epsw * (1 - 2 * svf_w) * Esky;
-//     float temp5 = epsw * (1 - epss) * svf_w * svf_s * Esky;
-//     float temp6 = epsw * (1 - epsw) * svf_w * (1 - 2 * svf_w) * Esky;
-//     float temp7 = epsw * epsw * (1 - epsw) * (1 - 2 * svf_w) * (1 - 2 * svf_w) * Esky;
-//     float temp8 = epsw * epsw * (1 - epss) * svf_w * (1 - svf_s) * Esky;
-//     float temp9 = epsw * (1 - epsw) * svf_w * (1 - 2 * svf_w) * epss * Es;
-//     // 总的 L_w^*
-//     float diffuse_wall = temp1 + temp3 + temp4 + temp5 + temp6 + temp7 + temp8 + temp9;
-//
-//     float diffuse_roof = Esky * epsr;
-//
-//     *diffuserad_street = diffuse_street;
-//     *diffuserad_wall = diffuse_wall;
-//     *diffuserad_roof = diffuse_roof;
-// }
+void RT::diffuseScatter_VNIR_Urban(float ref_roof, float ref_wall, float ref_street, float svf_s, float svf_w, float frs, float frh, float fws, float fwh, float fss, float fsh,
+    float BAI, float sza,float Esun,float Esky,float *diffuserad_roof,float *diffuserad_wall, float *diffuserad_street, float vza , float raa , float thm)
+{
+    // 计算墙壁吸收的散射能量
+    float p= 0.88 * (1 - exp(-0.7 * pow(BAI, 0.75))); //需要计算，先写定值
+    float ud = (1 - p) / 2.0; //不准确但是这里简单认为向上向下概率相同
+    float rho_wall = ((1 - svf_w) * ref_wall * ud);
 
-void diffuseScatter_TIR_urban(float bai, float svf_w, float svf_s, float frs, float frh, float fws, float fwh, float fss, float fsh, float rrho,float wrho,float srho,float sza,float Esun,float Esky,float Trs, float Trh, float Tws,float Twh, float Tss, float Tsh, float *diffuserad_roof, float *diffuserad_wall,  float *diffuserad_street, float vza =0,float raa = 0,float thm=53)
+    *diffuserad_roof = 0;
+
+    float Lwall1 = (Esun * ref_wall * p * (1 - ref_wall)) / (1 - ref_wall * p);
+    float Lwall21 = (Esun * (fwh + fws) * ref_wall * ud) / (1 - ref_wall * p);
+    float Lwall2 = ((Lwall21 + Esun) * ref_street * (1 - rho_wall)) / (1 - ref_street * rho_wall);
+    *diffuserad_wall = Lwall1 + Lwall2;
+
+    float Lstreet11 = (Esun * (fwh + fws) * ref_wall * ud) / (1 - ref_wall * p);
+    float Lstreet1 = (Lstreet11 * (1 - ref_street)) / (1 - ref_street * rho_wall);
+    float Lstreet2 = (Esun * (fss + fsh) *  (1 - ref_street)) / (1 - ref_street * rho_wall);
+    *diffuserad_street = Lstreet1 + Lstreet2;
+
+}
+
+void RT::diffuseScatter_TIR_urban(float bai, float svf_w, float svf_s, float frs, float frh, float fws, float fwh, float fss, float fsh,
+    float rrho,float wrho,float srho,float sza,float Esun,float Esky,float Trs, float Trh, float Tws,float Twh, float Tss, float Tsh, float *diffuserad_roof, float *diffuserad_wall,  float *diffuserad_street, float vza ,float raa,float thm)
 {
 
     float rd = 3.1415926/180.0;
@@ -858,6 +601,72 @@ void diffuseScatter_TIR_urban(float bai, float svf_w, float svf_s, float frs, fl
 }
 
 
+float RT::hotspot_vegetation_volume(float lai, float sza) {
+    // 处理 sza 接近 90 度的情况，避免除零或负值
+    if (sza >= 89.9f) return 0.0f;
+
+    float sthets = std::cos(sza * RD); // 注意：原Python代码变量名为sthets但实际计算的是cos(rad)
+
+    // 植被层的透过率
+    float gap_probability_illuminate = std::exp(-GG * lai * CI / sthets);
+
+    // 计算光照体积比例
+    // 公式: (1 - gap_probability) / (G * LAI * CI) * cos(sza)
+    float denominator = GG * lai * CI;
+
+    // 避免 LAI 为 0 导致的除零错误
+    if (denominator < 1e-6f) return 1.0f; // 如果没有植被，视为全光照? 或者根据物理意义处理
+
+    float sunlit_fraction_volume = (1.0f - gap_probability_illuminate) / denominator * sthets;
+
+    return sunlit_fraction_volume;
+}
+
+void RT::multiple_scattering_analytical_sunlit(float lai, float vza, float sza, float refl_soil, float refl_leaf,
+                                           float& ems_out, float& emh_out) {
+
+    // 1. 计算间隙概率
+    float bv = gap_probability_hom_analytical(lai, vza);
+    float M = gap_probability_hom_hemisphere_analytical(lai);
+
+    // 2. 查找表 alpha
+    const float alpha[10] = {
+        0.2885375f, 0.2885375f, 0.2964427f, 0.3003953f, 0.3083004f,
+        0.3201581f, 0.3399209f, 0.3715415f, 0.4189723f, 1.0f
+    };
+
+    // 计算索引: vza / 10
+    int vza_index = static_cast<int>(vza / 10.0f);
+    // 边界检查：确保索引在 0-9 之间
+    if (vza_index < 0) vza_index = 0;
+    if (vza_index > 9) vza_index = 9;
+
+    // 3. 计算光照和阴影体积比例
+    float Vsunlit = hotspot_vegetation_volume(lai, sza);
+    float Vshaded = 1.0f - Vsunlit;
+
+    float alpha_val = alpha[vza_index];
+
+    // 4. 计算光照部分的多次散射 (Sunlit)
+    float term_soil_sun = bv * (1.0f - M) * refl_soil * Vsunlit;
+    float term_leaf_sun = (1.0f - alpha_val) * (1.0f - bv * M) * (1.0f - bv) * refl_leaf * Vsunlit;
+
+    float ms_sunlit = term_soil_sun + term_leaf_sun;
+    // 最后乘以 (1 - refl_leaf)，即乘以发射率 Em
+    ms_sunlit = ms_sunlit * (1.0f - refl_leaf);
+
+    // 5. 计算阴影部分的多次散射 (Shaded)
+    float term_soil_sha = bv * (1.0f - M) * refl_soil * Vshaded;
+    float term_leaf_sha = (1.0f - alpha_val) * (1.0f - bv * M) * (1.0f - bv) * refl_leaf * Vshaded;
+
+    float ms_shaded = term_soil_sha + term_leaf_sha;
+    ms_shaded = ms_shaded * (1.0f - refl_leaf);
+
+    // 赋值给引用输出
+    ems_out = ms_sunlit;
+    emh_out = ms_shaded;
+}
+
 void RT::optical(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<PixelIO> m_pPixelio) {
 
 
@@ -882,8 +691,7 @@ void RT::optical(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<PixelIO> m
 
 }
 
-
-float calculate_effective_lai_crown(Canopy &canopy, double sza)
+float RT::calculate_effective_lai_crown(Canopy &canopy, double sza)
 {
     float lai_temp = canopy.lai;
     double xza_temp = sza;
@@ -956,15 +764,16 @@ void RT::netrad_shortwave(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<P
         // 如果LAI大于0，计算叶片和土壤的辐射
         if (lai > 0) {
 
-            // 将LAI转化为有效LAI计算净辐射，但是在方向亮温计算是否有影响存疑
-            int type_temp = canopy.type;
-            // 定义要检查的类型集合
-            std::vector<int> canopy_types = {1, 2, 3, 4, 5, 6, 7};
-            // 判断条件
-            bool ind_crown = std::find(canopy_types.begin(), canopy_types.end(), type_temp) != canopy_types.end();
-            if (ind_crown) {
-                lai = calculate_effective_lai_crown(canopy, sza);
-            }
+            // // 将LAI转化为有效LAI计算净辐射，但是在方向亮温计算是否有影响存疑
+            // int type_temp = canopy.type;
+            // // 定义要检查的类型集合
+            // std::vector<int> canopy_types = {1, 2, 3, 4, 5, 6, 7};
+            // // 判断条件
+            // bool ind_crown = std::find(canopy_types.begin(), canopy_types.end(), type_temp) != canopy_types.end();
+            // if (ind_crown) {
+            //     // lai = calculate_effective_lai_crown(canopy, sza);
+            //     lai = calculate_effective_lai_crown(canopy, sza);
+            // }
 
             // 计算叶片和土壤的散射辐射
             diffuseScatter_VNIR(lai, lrho, ltau, rs, sza, Esun, Esky, &diffuse_leaf, &diffuse_soil);
@@ -973,8 +782,10 @@ void RT::netrad_shortwave(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<P
             netrad.diffuseVrad_leaf += diffuse_leaf;  // 更新叶片散射辐射
             netrad.diffuseVrad_soil += diffuse_soil;  // 更新土壤散射辐射
             netrad.directVrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - lrho - ltau);  // 更新叶片直接辐射
-            netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
-
+            netrad.directVrad_soil += (Esun / cos(sza * PI / 180.0)) * (1 - rs);  // 更新土壤直接辐射
+            // netrad.directVrad_leaf += Esun * (1 - lrho - ltau);  // 更新叶片直接辐射
+            // netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
+            
             // 如果波长在可见光范围内（400-700nm），则计算辐射强度
             if (wl >= 400 && wl <= 700) {
                 netrad.directPrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - lrho - ltau) * wl * (1e-3) / (A * H * C);  // 叶片直接辐射强度
@@ -982,12 +793,13 @@ void RT::netrad_shortwave(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<P
             }
         } else {
             // 如果LAI为0，只有土壤辐射
-            netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
-            netrad.diffuseVrad_soil += Esky * (1 - rs);  // 更新土壤散射辐射
+            netrad.directVrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - rs);  // 更新叶片直接辐射
+            netrad.directVrad_soil += (Esky / cos(sza * PI / 180.0)) * (1 - rs);  // 更新土壤直接辐射
+            // netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
+            // netrad.diffuseVrad_soil += Esky * (1 - rs);  // 更新土壤散射辐射
         }
     }
 }
-
 
 void RT::netrad_longwave(std::shared_ptr<Defined> m_pDefined,std::shared_ptr<PixelIO>  m_pPixelio)
 {
@@ -1035,7 +847,8 @@ void RT::netrad_longwave(std::shared_ptr<Defined> m_pDefined,std::shared_ptr<Pix
         // 将LAI转化为有效LAI计算净辐射，但是在方向亮温计算是否有影响存疑
         int type_temp = canopy.type;
         // 定义要检查的类型集合
-        std::vector<int> canopy_types = {1, 2, 3, 4, 5, 6, 7};
+        // std::vector<int> canopy_types = {1, 2, 3, 4, 5, 6, 7};
+        std::vector<int> canopy_types = {1, 2, 3, 4, 5};
         // 判断条件
         bool ind_crown = std::find(canopy_types.begin(), canopy_types.end(), type_temp) != canopy_types.end();
         if (ind_crown) {
@@ -1054,82 +867,165 @@ void RT::netrad_longwave(std::shared_ptr<Defined> m_pDefined,std::shared_ptr<Pix
 
 }
 
-
 void RT::nadirTir(std::shared_ptr<PixelIO> &m_pPixelio) {
-
-    float result = 0;
+    // 这个代码采用的是森林冠层模型进行天顶方向亮温解算
     // 获取 PixelIO 中的各种数据
     Canopy &canopy = m_pPixelio->m_pInputset->canopy;
     Thermal &thermal = m_pPixelio->m_pDynamicVariable->thermal;
     Spectral &spectral = m_pPixelio->m_pStaticVariable->spectal;
     Angle &angle = m_pPixelio->m_angle;
-    int knode = m_pPixelio->k_node;
-    if(canopy.lai<=0)     // 如果叶面积指数（LAI）小于等于0，表示没有植被
-    {
-        float Tss = thermal.Tsoilsunlit;        // 获取阳光照射土壤的温度
-        float rad = SCI::Planck(10.5,Tss);        // 通过 Planck 函数计算辐射值（波长 10.5 微米）
-//        m_pPixelio->m_vSkt[knode]  = SCI::invPlanck(10.5,Radss*(1-m_spectral.soilRefl_ir));
-        rad = rad *(1-spectral.soilRefl_ir);        // 考虑土壤的反射率，调整辐射值
-        //   m_pPixelio->skt =  SCI::invPlanck(10.5,Radss*(1-m_spectral.soilRefl_ir));
-        if (isnan(rad)) {
-            m_pPixelio->m_vSkt[knode] = 0;
-            return;
+
+    // 筛选均质和冠层像元
+    int type_temp = canopy.type;
+    // 定义要检查的类型集合
+    std::vector<int> hom_types = {6, 7, 8, 9, 10, 12, 14, 15, 16};
+    std::vector<int> canopy_types = {1, 2, 3, 4, 5};
+    // std::vector<int> canopy_types = {1, 2, 3, 4, 5, 6, 7};
+    // 判断条件
+    bool ind_hom = std::find(hom_types.begin(), hom_types.end(), type_temp) != hom_types.end();
+    bool ind_crown = std::find(canopy_types.begin(), canopy_types.end(), type_temp) != canopy_types.end();
+
+    if (ind_hom) {
+        int knode = m_pPixelio->k_node;
+        float wavelength = 10.5f;
+        float min_rad = 3.0f;
+        float max_rad = 20.0f;
+        float default_temp = 273.17f;
+
+        if (canopy.lai <= 0) {
+            // Bare soil case
+            float Tss = thermal.Tsoilsunlit;
+            float rad = SCI::Planck(wavelength, Tss) * (1 - spectral.soilRefl_ir);
+
+            if (isnan(rad)) {
+                m_pPixelio->m_vSkt[knode] = 0;
+                return;
+            }
+            m_pPixelio->m_vSkt[knode] = (rad > max_rad || rad < min_rad)
+                ? default_temp
+                : SCI::invPlanck(wavelength, rad);
+        } else {
+            // Vegetation case
+            float refl_soil = spectral.soilRefl_ir;
+            float refl_leaf = spectral.leafRefl_ir;
+            float emis_soil = 1 - refl_soil;
+            float emis_leaf = 1 - refl_leaf;
+
+            float fss, fsh, fcs, fch, mss, msh, mcs, mch;
+            tirt_direct(canopy, angle, fss, fsh, fcs, fch);
+            tirt_scatter(canopy, angle, spectral, mss, msh, mcs, mch);
+
+            // Precompute common terms
+            float fs_emis = fss * emis_soil + fsh * emis_soil;
+            float ms = mss + msh;
+            float fc_emis = fcs * emis_leaf + fch * emis_leaf;
+            float mc = mcs + mch;
+
+            // Compute weighted radiation
+            float rad = (fss * emis_soil + mss) * SCI::Planck(wavelength, thermal.Tsoilsunlit)
+                      + (fsh * emis_soil + msh) * SCI::Planck(wavelength, thermal.Tsoilshaded)
+                      + (fcs * emis_leaf + mcs) * SCI::Planck(wavelength, thermal.Tleafsunlit)
+                      + (fch * emis_leaf + mch) * SCI::Planck(wavelength, thermal.Tleafshaded);
+
+            rad /= (fs_emis + ms + fc_emis + mc);
+
+            if (isnan(rad)) {
+                m_pPixelio->m_vSkt[knode] = 0;
+                return;
+            }
+            m_pPixelio->m_vSkt[knode] = (rad > max_rad || rad < min_rad)
+                ? default_temp
+                : SCI::invPlanck(wavelength, rad);
         }
-        if(rad > 20 || rad < 3) {m_pPixelio->m_vSkt[knode] = 273.17; } // 如果辐射值不在合理范围内（3 到 20），将结果设为 273.17 K
-            // m_pPixelio->m_vSkt[knode] = SCI::invPlanck(10.5,rad);
-        else{
-            m_pPixelio->m_vSkt[knode] = SCI::invPlanck(10.5,rad);  // 否则，通过反向 Planck 函数计算温度并设置结果
-//            m_pPixelio->m_vSkt[knode] = 273.17;
-        }
-    }else
-    {
-        // 如果存在植被，获取各种反射率和温度值
+    }
+    else if (ind_crown) {
+        int knode = m_pPixelio->k_node;
+        float tch_temp = thermal.Tleafsunlit;
+        float tss_temp = thermal.Tsoilsunlit;
+        float tsh_temp = thermal.Tsoilshaded;
+        float tcs_temp = thermal.Tleafshaded;
+
+        float lai_temp = canopy.lai;
+
+        float vza_temp = angle.vza;
+        float sza_temp = angle.sza;
+        float vaa_temp = angle.vaa;
+        float saa_temp = angle.saa;
+
+        angle.vza = vza_temp;
+        angle.sza = sza_temp;
+        angle.vaa = vaa_temp;
+        angle.saa = saa_temp;
+
         float refl_soil = spectral.soilRefl_ir;
-        float refl_leaf =  spectral.leafRefl_ir;
-//        float Tss = thermal.Tsoilsunlit;
-//        float Tsh = thermal.Tsoilsunlit;
-//        float Tcs = thermal.Tsoilsunlit;
-//        float Tch = thermal.Tsoilsunlit;
-        float Tss = thermal.Tsoilsunlit;
-        float Tsh = thermal.Tsoilshaded;
-        float Tcs = thermal.Tleafsunlit;
-        float Tch = thermal.Tleafshaded;
+        float refl_leaf = spectral.leafRefl_ir;
+        float emis_s_temp = 1 - refl_soil;
+        float emis_v_temp = 1 - refl_leaf;
 
-        // 计算土壤和叶片的发射率
-//        float emis_soil = 0.955;
-//        float emis_leaf = 0.985;
-        float emis_soil = 1-refl_soil;
-        float emis_leaf = 1-refl_leaf;
+        if (lai_temp <= 0) // 如果叶面积指数（LAI）小于等于0，表示没有植被
+        {
+            float rad = SCI::Planck(10.5, tss_temp); // 通过 Planck 函数计算辐射值（波长 10.5 微米）
+            rad = rad * (1 - emis_s_temp); // 考虑土壤的反射率，调整辐射值
+            if (isnan(rad)) {
+                m_pPixelio->m_vSkt[knode] = 0;
+                return;
+            }
+            if (rad > 20 || rad < 3) {
+                m_pPixelio->m_DBT = 273.17;
+            } // 如果辐射值不在合理范围内（3 到 20），将结果设为 273.17 K
+            else {
+                m_pPixelio->m_vSkt[knode] = SCI::invPlanck(10.5, rad); // 否则，通过反向 Planck 函数计算温度并设置结果
+            }
+        } else {
+            std::array<float, 4> Ecom = {emis_s_temp, emis_s_temp, emis_v_temp, emis_v_temp};
+            std::array<float, 4> Tcom = {tss_temp, tsh_temp, tcs_temp, tch_temp};
+            std::array<float, 4> Rcom;
+            for (int i = 0; i < 4; ++i) {
+                Rcom[i] = SCI::Planck(10.5, Tcom[i]);
+            }
 
-        float fss,fsh,fcs,fch,mss,msh,mcs,mch;
-        tirt_direct(canopy,angle,fss,fsh,fcs,fch);        // 计算直接辐射传输因子
-        tirt_scatter(canopy,angle,spectral,mss,msh,mcs,mch);        // 计算散射辐射传输因子
+            // 计算各方向的比例因子
+            float fss, fsh, fcs, fch;
+            tirt_direct_canopy(canopy, angle, fss, fsh, fcs, fch); // 计算直接辐射传输因子
+            std::array<float, 4> Pcom = {fss, fsh, fcs, fch};
+            const size_t number_component = Ecom.size();
+            std::array<float, 4> Ecom_direct = {};
+            std::array<float, 4> Rcom_direct = {};
+            float Ecom_direct_sum = 0;
+            float Rcom_direct_sum = 0;
+            for (size_t k = 0; k < number_component; ++k) {
+                Ecom_direct[k] = Pcom[k] * Ecom[k];
+                Rcom_direct[k] = Rcom[k] * Ecom_direct[k];
+                Ecom_direct_sum += Ecom_direct[k];
+                Rcom_direct_sum += Rcom_direct[k];
+            }
 
-        // 通过 Planck 函数计算各种温度对应的辐射值
-        float Radss = SCI::Planck(10.5,Tss);
-        float Radsh = SCI::Planck(10.5,Tsh);
-        float Radcs = SCI::Planck(10.5,Tcs);
-        float Radch = SCI::Planck(10.5,Tch);
-        // 计算综合辐射值
-        float rad = (fss*emis_soil+mss)*Radss + (fsh*emis_soil+msh)*Radsh +(fcs*emis_leaf+mcs)*Radcs +(fch*emis_leaf+mch)*Radch;
-//      test  float rad = emis_soil*Radss ;
-        if (isnan(rad)) {
-            m_pPixelio->m_vSkt[knode] = 0;
-            return;
+            float mss, msh, mcs, mch;
+            tirt_scatter(canopy, angle, spectral, mss, msh, mcs, mch); // 计算散射辐射传输因子
+            std::array<float, 4> Ecom_scatter = {mss, msh, mcs, mch};
+            std::array<float, 4> Rcom_scatter = {};
+            float Ecom_scatter_sum = mss + msh + mcs + mch;
+            float Rcom_scatter_sum = 0;
+            for (size_t k = 0; k < number_component; ++k) {
+                Rcom_scatter[k] = Rcom[k] * Ecom_scatter[k];
+                Rcom_scatter_sum += Rcom_scatter[k];
+            }
+            float rad = (Rcom_direct_sum + Rcom_scatter_sum) / (Ecom_direct_sum + Ecom_scatter_sum);
+            if (isnan(rad)) {
+                m_pPixelio->m_vSkt[knode] = 0;
+                return;
+            }
+            if (rad > 20 || rad < 3) {
+                m_pPixelio->m_vSkt[knode] = 273.17;
+            } else {
+                m_pPixelio->m_vSkt[knode] = SCI::invPlanck(10.5, rad);
+            }
         }
-        if(rad > 20 || rad < 3) {
-            m_pPixelio->m_vSkt[knode] = 273.17;
-//           m_pPixelio->m_vSkt[knode] = SCI::invPlanck(10.5,rad);
-       }
-       else{
-            m_pPixelio->m_vSkt[knode] = SCI::invPlanck(10.5,rad);
-//            m_pPixelio->m_vSkt[knode] = 273.17;
-       }
     }
 
 }
 
-float hotspot_analytical(Canopy canopy, Angle angle)
+float RT::hotspot_analytical(Canopy canopy, Angle angle)
 {
     float CIv = 1.0;
     float CIs = 1.0;
@@ -1205,7 +1101,7 @@ float hotspot_analytical(Canopy canopy, Angle angle)
     return gapvs;
 }
 
-float hotspot_analytical_canopy(float lai, float hspot, float vza, float sza, float raa, float CIs, float CIv)
+float RT::hotspot_analytical_canopy(float lai, float hspot, float vza, float sza, float raa, float CIs, float CIv)
 {
     float Gv = 0.5;
     float Gs = 0.5;
@@ -1268,7 +1164,7 @@ float hotspot_analytical_canopy(float lai, float hspot, float vza, float sza, fl
     return gapvs;
 }
 
-float hotspot_volume(float lai,float sza)
+float RT::hotspot_volume(float lai,float sza)
 {
     float sthets = cos(sza *RD);
     if(sza > 75)
@@ -1281,7 +1177,7 @@ float hotspot_volume(float lai,float sza)
     return sunlit_fraction_volume;
 }
 
-float hotspot_layer(Canopy canopy,Angle angle)
+float RT::hotspot_layer(Canopy canopy,Angle angle)
 {
     float CIv = 1.0;
     float CIs = 1.0;
@@ -1331,7 +1227,7 @@ float hotspot_layer(Canopy canopy,Angle angle)
 
 }
 
-float hotspot_layer_canopy(float lai, float hspot, float vza, float sza, float raa, float CIs, float CIv)
+float RT::hotspot_layer_canopy(float lai, float hspot, float vza, float sza, float raa, float CIs, float CIv)
 {
     float Gv = 0.5;
     float Gs = 0.5;
@@ -1370,20 +1266,20 @@ float hotspot_layer_canopy(float lai, float hspot, float vza, float sza, float r
 
 }
 
-float gap_probability_hom_analytical(float lai, float vza)
+float RT::gap_probability_hom_analytical(float lai, float vza)
 {
 
     float cthetx = cos(vza*RD);
     return exp(-lai * GG * CI / cthetx);
 }
 
-float gap_probability_hom_hemisphere_analytical(float lai)
+float RT::gap_probability_hom_hemisphere_analytical(float lai)
 {
     float coeff = 0.825;
     return exp(-coeff * lai * GG);
 }
 
-float gap_probability_crown_analytical(float lai,  float std, float radi_horizontal, float radi_vertical,  float xza)
+float RT::gap_probability_crown_analytical(float lai,  float std, float radi_horizontal, float radi_vertical,  float xza)
 {
     // 计算tg(thx)和cos(thex)
     float tgthx = std::tan(xza*RD);
@@ -1393,6 +1289,64 @@ float gap_probability_crown_analytical(float lai,  float std, float radi_horizon
     float bv_in = std::exp(-lai / (areav * std) * GG / cthetx);
     float bv = std::exp(-areav * (1.0 - bv_in) * std);
     return bv;
+}
+
+
+std::pair<float, float> RT::slope1(float vza, float vaa, float pza, float paa) {
+    const float rd = PI / 180.0f;
+
+    // 计算坡度角的正弦和余弦
+    float sthetp = std::sin(pza * rd);
+    float cthetp = std::cos(pza * rd);
+
+    // 计算方位角差值
+    float temp = vaa - paa;
+    float cosphi = std::cos(temp * rd);
+    float sinphi = std::sin(temp * rd);
+
+    // 计算观测角的正弦和余弦
+    float sthetv = std::sin(vza * rd);
+    float cthetv = std::cos(vza * rd);
+
+    // 计算转换后的坐标
+    float x = cosphi * sthetv * cthetp - cthetv * sthetp;
+    float y = sthetv * sinphi;
+    float z = sthetv * cosphi * sthetp + cthetp * cthetv;
+    float r = x * x + y * y;
+
+    // 处理z的边界条件
+    if (z > 0.9999f) {
+        z = 0.9999f;
+    }
+
+    // 计算天顶角
+    float tip1 = std::acos(z);
+    if (tip1 > PI / 2.0f) {
+        tip1 = PI - tip1;
+    }
+
+    // 计算方位角
+    float phip1 = 0.0f;
+    if (r < 0.00001f) {
+        phip1 = 0.0f;
+    } else {
+        phip1 = std::asin(y / std::sqrt(r));
+
+        // 象限校正
+        if (x < 0.0f) {
+            if (y > 0.0f) {
+                phip1 = PI - phip1;
+            } else {
+                phip1 = -PI - phip1;
+            }
+        }
+    }
+
+    // 转换为度
+    tip1 = tip1 / rd;
+    phip1 = phip1 / rd;
+
+    return std::make_pair(tip1, phip1);
 }
 
 void RT::tirt_direct(Canopy canopy, Angle angle, float &fss,float &fsh,float &fcs,float &fch)
@@ -1445,7 +1399,120 @@ void RT::tirt_scatter(Canopy canopy, Angle angle,Spectral spectral, float &mss, 
 
 }
 
-double calculate_projection(const std::vector<double>& angles, const std::vector<double>& shape, double alpha, double height_diff, double rd) {
+void RT::tirt_direct_canopy(Canopy canopy, Angle angle, float &fss,float &fsh,float &fcs,float &fch)
+{
+    float lai_temp = canopy.lai;
+    float std_temp = canopy.treeStand;
+    float hspot_temp = canopy.hspot;
+    float canopyheight_temp = canopy.canopyHeight;
+    float b_temp = canopy.b;
+    float radi_vertical_temp = canopyheight_temp / 2.0;
+    float radi_horizontal_temp = canopyheight_temp / (2.0 * b_temp);
+
+    float vza_temp = angle.vza;
+    float sza_temp = angle.sza;
+    float vaa_temp = angle.vaa;
+    float saa_temp = angle.saa;
+    float raa_temp = vaa_temp - saa_temp;
+
+    float bv = gap_probability_crown_analytical(lai_temp, std_temp, radi_horizontal_temp, radi_vertical_temp, vza_temp);
+    float bi = gap_probability_crown_analytical(lai_temp, std_temp, radi_horizontal_temp, radi_vertical_temp, sza_temp);
+
+    float Psoil = bv;
+    float Pleaf = 1.0 - Psoil;
+
+    // 计算视角和太阳角的余弦值
+    float uv = std::cos(vza_temp * RD);
+    float ui = std::cos(sza_temp * RD);
+
+    // 计算CIv和CIi
+    float CIv = -std::log(bv) * uv / (lai_temp * GG);
+    float CIs = -std::log(bi) * ui / (lai_temp * GG);
+
+    // 计算土壤和叶片的可视比例
+    float Psoil_sunlit = hotspot_layer_canopy(lai_temp, hspot_temp, vza_temp, sza_temp, raa_temp, CIs, CIv);
+    float Pleaf_sunlit = hotspot_analytical_canopy(lai_temp, hspot_temp, vza_temp, sza_temp, raa_temp, CIs, CIv);
+    fcs = Pleaf_sunlit;
+    fss = Psoil_sunlit;
+    float fc = Pleaf;
+    float fs = Psoil;
+    fch = fc-fcs;
+    fsh = fs-fss;
+}
+
+
+void RT::tirt_direct_terrain(float lai, float std, float hspot, float hcr, float rcr, float vza, float sza, float raa,
+                             float &fss, float &fsh, float &fcs, float &fch) {
+    float bv = gap_probability_crown_analytical(lai, std, hcr, rcr, vza);
+    float bi = gap_probability_crown_analytical(lai, std, hcr, rcr, sza);
+
+    float Psoil = bv;
+    float Pleaf = 1.0 - Psoil;
+
+    // 计算视角和太阳角的余弦值
+    float uv = std::cos(vza * RD);
+    float ui = std::cos(sza * RD);
+
+    // 计算CIv和CIi
+    float CIv = -std::log(bv) * uv / (lai * GG);
+    float CIs = -std::log(bi) * ui / (lai * GG);
+
+    // 计算土壤和叶片的可视比例
+    float Psoil_sunlit = hotspot_layer_canopy(lai, hspot, vza, sza, raa, CIs, CIv);
+    float Pleaf_sunlit = hotspot_analytical_canopy(lai, hspot, vza, sza, raa, CIs, CIv);
+    fcs = Pleaf_sunlit;
+    fss = Psoil_sunlit;
+    float fc = Pleaf;
+    float fs = Psoil;
+    fch = fc - fcs;
+    fsh = fs - fss;
+}
+
+
+void RT::tirt_scatter_terrain(Canopy canopy, Angle angle, float &fss,float &fsh,float &fcs,float &fch)
+{
+    float lai_temp = canopy.lai;
+    float std_temp = canopy.treeStand;
+    float hspot_temp = canopy.hspot;
+    float canopyheight_temp = canopy.canopyHeight;
+    float b_temp = canopy.b;
+    float radi_vertical_temp = canopyheight_temp / 2.0;
+    float radi_horizontal_temp = canopyheight_temp / (2.0 * b_temp);
+
+    float vza_temp = angle.vza;
+    float sza_temp = angle.sza;
+    float vaa_temp = angle.vaa;
+    float saa_temp = angle.saa;
+    float raa_temp = vaa_temp - saa_temp;
+
+    float bv = gap_probability_crown_analytical(lai_temp, std_temp, radi_horizontal_temp, radi_vertical_temp, vza_temp);
+    float bi = gap_probability_crown_analytical(lai_temp, std_temp, radi_horizontal_temp, radi_vertical_temp, sza_temp);
+
+    float Psoil = bv;
+    float Pleaf = 1.0 - Psoil;
+
+    // 计算视角和太阳角的余弦值
+    float uv = std::cos(vza_temp * RD);
+    float ui = std::cos(sza_temp * RD);
+
+    // 计算CIv和CIi
+    float CIv = -std::log(bv) * uv / (lai_temp * GG);
+    float CIs = -std::log(bi) * ui / (lai_temp * GG);
+
+    // 计算土壤和叶片的可视比例
+    float Psoil_sunlit = hotspot_layer_canopy(lai_temp, hspot_temp, vza_temp, sza_temp, raa_temp, CIs, CIv);
+    float Pleaf_sunlit = hotspot_analytical_canopy(lai_temp, hspot_temp, vza_temp, sza_temp, raa_temp, CIs, CIv);
+    fcs = Pleaf_sunlit;
+    fss = Psoil_sunlit;
+    float fc = Pleaf;
+    float fs = Psoil;
+    fch = fc-fcs;
+    fsh = fs-fss;
+}
+
+
+
+double RT::calculate_projection(const std::vector<double>& angles, const std::vector<double>& shape, double alpha, double height_diff, double rd) {
     double length = shape[0];
     double width = shape[1];
     double vza = angles[0];
@@ -1457,11 +1524,11 @@ double calculate_projection(const std::vector<double>& angles, const std::vector
                     height_diff * width * tan_vza * std::abs(std::cos((vaa - waa) * rd)));
 }
 
-double calculate_overlap(double tantv, double tants, double up) {
+double RT::calculate_overlap(double tantv, double tants, double up) {
     return std::sqrt(tantv * tantv + tants * tants - 2 * tantv * tants * up) / (tantv + tants);
 }
 
-void RT::calculate_direct_emissivity(Canopy canopy, Angle angle, Building building, float &fss, float &fsh, float &frs, float &frh, float &fws, float &fwh, int ifP) {
+void RT::directional_emissivity_direct(Canopy canopy, Angle angle, Building building, float &fss, float &fsh, float &frs, float &frh, float &fws, float &fwh, int ifP) {
     double vza = angle.vza;
     double sza = angle.sza;
     double vaa = angle.vaa;
@@ -1617,8 +1684,7 @@ void RT::calculate_direct_emissivity(Canopy canopy, Angle angle, Building buildi
 
 }
 
-
-void RT::calculate_scattering_emissivity(Canopy canopy, Angle angle, Building building, float &mss, float &msh, float &mrs, float &mrh, float &mws, float &mwh, int ifP) {
+void RT::directional_emissivity_scatter(Canopy canopy, Angle angle, Building building, float &mss, float &msh, float &mrs, float &mrh, float &mws, float &mwh, int ifP) {
     double vza = angle.vza;
     double sza = angle.sza;
     double vaa = angle.vaa;
@@ -1863,46 +1929,396 @@ void RT::calculate_scattering_emissivity(Canopy canopy, Angle angle, Building bu
 
 }
 
+void RT::component_emissivity_direct(Canopy canopy, Angle angle, Terrain terrain, std::vector<float>& results, int ifP) {
+    // 1. 基础参数提取
+    float h_temp = terrain.h;
+    float n_temp = terrain.n; // 假设 terrain.n 代表某种密度参数
+    float r_temp = terrain.r;
+    int n_part = 10; // 对应 self.n_part
 
-void RT::tirt_direct_canopy(Canopy canopy, Angle angle, float &fss,float &fsh,float &fcs,float &fch)
-{
-    float lai_temp = canopy.lai;
-    float std_temp = canopy.treeStand;
-    float hspot_temp = canopy.hspot;
-    float canopyheight_temp = canopy.canopyHeight;
-    float b_temp = canopy.b;
-    float radi_vertical_temp = canopyheight_temp / 2.0;
-    float radi_horizontal_temp = canopyheight_temp / (2.0 * b_temp);
+    if ((n_temp !=0) & (r_temp !=0)){
+        int test_temp = 0;
+    }
 
     float vza_temp = angle.vza;
     float sza_temp = angle.sza;
     float vaa_temp = angle.vaa;
     float saa_temp = angle.saa;
-    float raa_temp = vaa_temp - saa_temp;
 
-    float bv = gap_probability_crown_analytical(lai_temp, std_temp, radi_horizontal_temp, radi_vertical_temp, vza_temp);
-    float bi = gap_probability_crown_analytical(lai_temp, std_temp, radi_horizontal_temp, radi_vertical_temp, sza_temp);
+    float raa_temp = std::abs(vaa_temp - saa_temp);
+    if (raa_temp > 180.0f) raa_temp = 360.0f - raa_temp;
 
-    float Psoil = bv;
-    float Pleaf = 1.0 - Psoil;
-
-    // 计算视角和太阳角的余弦值
-    float uv = std::cos(vza_temp * RD);
+    // 2. 三角函数预计算
     float ui = std::cos(sza_temp * RD);
+    float uv = std::cos(vza_temp * RD);
+    float si = std::sin(sza_temp * RD);
+    float sv = std::sin(vza_temp * RD);
+    float up = std::cos(raa_temp * RD);
+    float tantv = std::tan(vza_temp * RD);
+    float tants = std::tan(sza_temp * RD);
 
-    // 计算CIv和CIi
-    float CIv = -std::log(bv) * uv / (lai_temp * GG);
-    float CIs = -std::log(bi) * ui / (lai_temp * GG);
+    // 3. 构建山地形状列表 (模拟 Python 的 self.shapes)
+    typedef struct {
+        float height;
+        float radius;
+        float density;
+    } Shape;
 
-    // 计算土壤和叶片的可视比例
-    float Psoil_sunlit = hotspot_layer_canopy(lai_temp, hspot_temp, vza_temp, sza_temp, raa_temp, CIs, CIv);
-    float Pleaf_sunlit = hotspot_analytical_canopy(lai_temp, hspot_temp, vza_temp, sza_temp, raa_temp, CIs, CIv);
-    fcs = Pleaf_sunlit;
-    fss = Psoil_sunlit;
-    float fc = Pleaf;
-    float fs = Psoil;
-    fch = fc-fcs;
-    fsh = fs-fss;
+    std::vector<Shape> shapes;
+    Shape single_shape;
+    single_shape.height = h_temp;
+    // 对应 Python: n_temp * 2.0 / 5000.0 / 5000.0
+    single_shape.density = n_temp * 2.0f / 25000000.0f;
+    single_shape.radius = r_temp / std::sqrt(2.0f);
+    shapes.push_back(single_shape);
+
+    int n_shape = shapes.size();
+
+    // ----------------------------------------------
+    // PART 1: PLANE Surface (平坦地表部分)
+    // ----------------------------------------------
+    float height1r = 0.0f;
+    float projv = 0.0f;
+    float projs = 0.0f;
+    float poccupied = 0.0f;
+
+    for (const auto &shape : shapes) {
+        float radius2 = shape.radius;
+        float height2 = shape.height;
+        float density2 = shape.density;
+
+        poccupied += density2 * PI * (radius2 * radius2);
+
+        float dh = height2 - height1r;
+        // alpha2 未在 Python 此循环中使用，但在后续计算中有用
+        // float alpha2 = std::atan(height2 / radius2);
+
+        // 视角方向投影
+        float L2_v = dh * tantv;
+        if (L2_v < radius2) L2_v = radius2;
+        // theta2_v 未使用
+        float gamma2_v = std::asin(radius2 / L2_v);
+
+        if ((dh > 0) || (L2_v > radius2)) {
+            float term = (1.0f / std::tan(gamma2_v) + gamma2_v - PI / 2.0f);
+            float projv_mount = density2 * term * radius2 * radius2;
+            projv += projv_mount;
+        }
+
+        // 太阳方向投影
+        float L2_s = dh * tants;
+        if (L2_s < radius2) L2_s = radius2;
+        float gamma2_s = std::asin(radius2 / L2_s);
+
+        if ((dh > 0) || (L2_s > radius2)) {
+            float term = (1.0f / std::tan(gamma2_s) + gamma2_s - PI / 2.0f);
+            float projs_mount = density2 * term * radius2 * radius2;
+            projs += projs_mount;
+        }
+    }
+
+    // 防止除以0
+    if (poccupied > 0.9999f) poccupied = 0.9999f;
+
+    projv = projv / (1.0f - poccupied);
+    projs = projs / (1.0f - poccupied);
+
+    float Overlapping = 0.0f;
+    // 避免分母为0
+    if ((tantv + tants) > 1e-6) {
+        float val = tantv * tantv + tants * tants - 2 * tantv * tants * up;
+        if (val < 0) val = 0;
+        Overlapping = std::sqrt(val) / (tantv + tants);
+    }
+
+    float projvs = projv + projs * Overlapping;
+
+    // 平坦地表的概率计算
+    float pPlaneV = std::exp(-projv) * (1.0f - poccupied);
+    float pPlaneS = std::exp(-projs) * (1.0f - poccupied);
+    float pPlaneV_sunlit = std::exp(-projvs) * (1.0f - poccupied);
+    float pPlaneV_shaded = pPlaneV - pPlaneV_sunlit;
+
+    // ----------------------------------------------
+    // PART 2: Forest on Plane (平坦地表植被属性)
+    // ----------------------------------------------
+    float fss, fsh, fcs, fch;
+    float lai = canopy.lai;
+    float std_val = canopy.treeStand;
+    float hspot = canopy.hspot;
+    float canopy_h = canopy.canopyHeight;
+    float b_val = canopy.b;
+    float hcr = canopy_h / 2.0f;
+    float rcr = canopy_h / (2.0f * b_val);
+
+    tirt_direct_terrain(lai, std_val, hspot, hcr, rcr, vza_temp, sza_temp, raa_temp, fss, fsh, fcs, fch);
+    float pPlaneV_veg_sunlit = pPlaneV_sunlit * fcs;
+    float pPlaneV_veg_shaded = pPlaneV_sunlit * fch + pPlaneV_shaded * fcs + pPlaneV_shaded * fch;
+    float pPlaneV_soil_sunlit = pPlaneV_sunlit * fss;
+    float pPlaneV_soil_shaded = pPlaneV_sunlit * fsh + pPlaneV_shaded * fss + pPlaneV_shaded * fsh;
+
+    // ----------------------------------------------
+    // PART 3: Mountain Surface (山地表面部分)
+    // ----------------------------------------------
+    float pMountV = 0.0f;
+    float pMountV_sunlit = 0.0f;
+
+    // 累加器
+    float pMount_veg = 0.0f;
+    float pMount_soil = 0.0f;
+    float pMount_veg_sunlit = 0.0f;
+    float pMount_soil_sunlit = 0.0f;
+
+    for (int kshape1 = 0; kshape1 < n_shape; kshape1++) {
+        Shape shape1 = shapes[kshape1];
+        float radius1 = shape1.radius;
+        float height1 = shape1.height;
+        float density1 = shape1.density;
+
+        float dheight = height1 / (float)n_part;
+        float projv_m = 0.0f;
+        float projs_m = 0.0f;
+
+        float alpha1 = std::atan(height1 / radius1);
+
+        // 最高点在观测方向的投影
+        float L1_v = height1 * tantv;
+        if (L1_v < radius1) L1_v = radius1;
+        float gamma1_v = std::asin(radius1 / L1_v);
+
+
+        float total_weight = 0.0f;
+        // --- 内部循环：计算圆锥切片的遮挡权重 ---
+        for (int kh = 0; kh < n_part; kh++) {
+            float height_temp = dheight * (kh + 0.5f);
+            // 针对 shapes 列表进行投影累加
+            float projv_mount_slice = 0.0f;
+            float projs_mount_slice = 0.0f;
+            float w_slice = 0.0f;
+
+            float r1_slice = (height_temp / height1) * radius1;
+            float w = (r1_slice * PI * dheight + r1_slice * 2.0f + dheight);
+            total_weight += w;
+
+            // 计算该切片产生的遮挡 (遍历所有山头，这里简化为遍历自身/同类)
+            for (const auto& s : shapes) {
+                float dh_slice = s.height - height_temp;
+                float alpha2 = std::atan(s.height / s.radius);
+
+                // View Blockage
+                float L2_v_slice = dh_slice * tantv;
+                if (L2_v_slice < s.radius) L2_v_slice = s.radius;
+
+                float gamma2_v_slice = std::asin(s.radius / L2_v_slice);
+
+                float term_v = s.density * (1.0f/std::tan(gamma2_v_slice) + gamma2_v_slice - PI/2.0f) * s.radius * s.radius;
+
+                if ((dh_slice < 0) || (L2_v_slice <= s.radius)) {
+                    term_v = 0.0f;
+                }
+                projv_mount_slice += term_v;
+
+                // Sun Blockage
+                float L2_s_slice = dh_slice * tants;
+                if (L2_s_slice < s.radius) L2_s_slice = s.radius;
+
+                float gamma2_s_slice = std::asin(s.radius / L2_s_slice);
+
+                float term_s = s.density * (1.0f/std::tan(gamma2_s_slice) + gamma2_s_slice - PI/2.0f) * s.radius * s.radius;
+
+                if ((dh_slice < 0) || (L2_s_slice <= s.radius)) {
+                    term_s = 0.0f;
+                }
+                projs_mount_slice += term_s;
+            }
+
+            projv_m += projv_mount_slice * w;
+            projs_m += projs_mount_slice * w;
+        } // end kh loop
+
+        projv_m = projv_m / n_part / total_weight / (1.0f - poccupied);
+        projs_m = projs_m / n_part / total_weight / (1.0f - poccupied);
+
+        float projvs_m = projv_m + projs_m * Overlapping;
+
+        // 计算山地平均光照和可视比例
+        float gapv_mount = std::exp(-projv_m);
+        float gapvs_mount = std::exp(-projvs_m);
+        float slope_deg = alpha1 * 180.0f / PI;
+
+        float pMountV_temp = 0.0f;
+        float pMountV_sunlit_temp = 0.0f;
+
+        // 可视面积计算逻辑
+        if (L1_v <= radius1) {
+            // 没有投影出来，可视部分是本圆
+             pMountV_temp = density1 * gapv_mount * (PI * radius1 * radius1);
+
+             if (sza_temp > slope_deg) {
+                 float cosphi = uv * ui + sv * si * up;
+                 pMountV_sunlit_temp = density1 * gapvs_mount * (PI * radius1 * radius1) * (1.0f + cosphi) * 0.5f;
+             } else {
+                 // 光照角度小于圆锥倾斜，全可视全光照 (这里 Python 代码有特殊处理)
+                 // Python: gapvs_mount = 1.0; pMountV_sunlit_temp = density1 * gapv_mount ...
+                 pMountV_sunlit_temp = density1 * gapv_mount * (PI * radius1 * radius1);
+             }
+        } else {
+            // 投影出本圆，可视部分 = 本圆 + 投影部分
+            float area_term = (1.0f / std::tan(gamma1_v) + gamma1_v + PI / 2.0f) * radius1 * radius1;
+            pMountV_temp = density1 * gapv_mount * area_term;
+
+            if (sza_temp > slope_deg) {
+                float cosphi = uv * ui + sv * si * up;
+                pMountV_sunlit_temp = density1 * gapvs_mount * area_term * (1.0f + cosphi) * 0.5f;
+            } else {
+                pMountV_sunlit_temp = density1 * gapv_mount * area_term;
+            }
+        }
+
+        pMountV += pMountV_temp;
+        pMountV_sunlit += pMountV_sunlit_temp;
+
+        // ----------------------------------------------
+        // 方位角积分 (360 loop)
+        // ----------------------------------------------
+        // 计算每个离散 360 方向上的角度贡献
+        int n_azi = 360;
+        float lza = slope_deg; // 坡度
+
+        float weight_accum_all = 0.0f; // 对应 Python: weight_all
+
+        // 临时累加变量
+        float sum_pVeg = 0.0f;
+        float sum_pSoil = 0.0f;
+        float sum_pVeg_sunlit = 0.0f;
+        float sum_pSoil_sunlit = 0.0f;
+
+        for (int i = 0; i < n_azi; i++) {
+            float laa = (float)i;
+            float vla = std::abs(vaa_temp - laa);
+
+            float uii_local = std::cos(lza * RD);
+            float uvv_local = std::cos(vza_temp * RD);
+            float sii_local = std::sin(lza * RD);
+            float svv_local = std::sin(vza_temp * RD);
+            float upp_local = std::cos(vla * RD);
+
+            float cosang = uvv_local * uii_local + svv_local * sii_local * upp_local;
+
+            if (cosang > 0.00001f) {
+                weight_accum_all += cosang;
+
+                // 调整参数
+                float stdtemp = std_val * std::cos(lza * RD);
+                float hcrtemp = hcr * std::cos(lza * RD);
+
+                // 坐标转换 (Slope1)
+                std::pair<float, float> new_v_ang = slope1(vza_temp, vaa_temp, lza, laa);
+                std::pair<float, float> new_s_ang = slope1(sza_temp, saa_temp, lza, laa);
+
+                float vzatemp1 = new_v_ang.first;
+                float szatemp1 = new_s_ang.first;
+                float vsatemp1 = std::abs(new_v_ang.second - new_s_ang.second);
+
+                float local_fss, local_fsh, local_fcs, local_fch;
+                tirt_direct_terrain(lai, stdtemp, hspot, hcrtemp, rcr, vzatemp1, szatemp1, vsatemp1,
+                                    local_fss, local_fsh, local_fcs, local_fch);
+
+                // 累加加权贡献 (Weight = cosang)
+                // PVeg = fcs + fch, PSoil = fss + fsh
+                sum_pVeg += (local_fcs + local_fch) * cosang;
+                sum_pSoil += (local_fss + local_fsh) * cosang;
+                sum_pVeg_sunlit += (local_fcs) * cosang;
+                sum_pSoil_sunlit += (local_fss) * cosang;
+            }
+        }
+
+        // 归一化权重
+        if (weight_accum_all > 0.0f) {
+            float pVeg_avg = sum_pVeg / weight_accum_all;
+            float pSoil_avg = sum_pSoil / weight_accum_all;
+            float pVeg_sunlit_avg = sum_pVeg_sunlit / weight_accum_all;
+            float pSoil_sunlit_avg = sum_pSoil_sunlit / weight_accum_all;
+
+            // 叠加到山地总分量中
+            pMount_veg += pMountV_temp * pVeg_avg;
+            pMount_soil += pMountV_temp * pSoil_avg;
+            pMount_soil_sunlit += pMountV_sunlit_temp * pSoil_sunlit_avg;
+            pMount_veg_sunlit += pMountV_sunlit_temp * pVeg_sunlit_avg;
+        }
+
+    } // end kshape1 loop
+
+    // ----------------------------------------------
+    // PART 4: Final Combination & Normalization
+    // ----------------------------------------------
+
+    // 坡地与平坦地表间的归一化
+    float pMountVnew = 1.0f - pPlaneV;
+    float temp_ratio = 1.0f;
+    if (pMountV > 1e-6f) {
+        temp_ratio = pMountVnew / pMountV;
+    } else {
+        temp_ratio = 0.0f;
+    }
+
+    // 调整山地光照分量
+    pMountV_sunlit = temp_ratio * pMountV_sunlit;
+    float pMountV_shaded = pMountVnew - pMountV_sunlit;
+    float pMountV_veg_sunlit_final = pMount_veg_sunlit * temp_ratio;
+    float pMountV_veg_shaded_final = pMount_veg * temp_ratio - pMountV_veg_sunlit_final;
+    float pMountV_soil_sunlit_final = pMount_soil_sunlit * temp_ratio;
+    float pMountV_soil_shaded_final = pMount_soil * temp_ratio - pMountV_soil_sunlit_final;
+
+    // ----------------------------------------------
+    // PART 5: Return Logic
+    // ----------------------------------------------
+    results.clear();
+
+    // 对应 Python: return pPlaneV, pMountV
+    if (ifP == 1) {
+        results.push_back(pPlaneV);
+        results.push_back(pMountV);
+    }
+    // 对应 Python: return soil_sun, soil_sha, veg_sun, veg_sha (summing plane + mount)
+    else if (ifP == 2) {
+        results.push_back(pPlaneV_soil_sunlit + pMountV_soil_sunlit_final);
+        results.push_back(pPlaneV_soil_shaded + pMountV_soil_shaded_final);
+        results.push_back(pPlaneV_veg_sunlit + pMountV_veg_sunlit_final);
+        results.push_back(pPlaneV_veg_shaded + pMountV_veg_shaded_final);
+    }
+    // 对应 Python: return 0, 0
+    else if (ifP == 3) {
+        results.push_back(0.0f);
+        results.push_back(0.0f);
+    }
+    // 对应 Python: return pPlaneV + pMountV
+    else {
+        results.push_back(pPlaneV + pMountV);
+    }
+}
+
+void RT::component_emissivity_scatter(Canopy canopy, Angle angle, Spectral spectral, std::vector<float>& results, int ifP) {
+    // 1. 参数提取
+    float refl_soil = spectral.soilRefl_ir;       // 土壤比辐射率
+    float refl_leaf = spectral.leafRefl_ir;       // 叶片比辐射率
+    float lai = canopy.lai;
+
+    // 从 Angle 结构体获取角度
+    float vza = angle.vza;
+    float sza = angle.sza;
+    // 3. 计算散射分量
+    float ems = 0.0f;
+    float emh = 0.0f;
+
+    multiple_scattering_analytical_sunlit(lai, vza, sza, refl_soil, refl_leaf, ems, emh);
+
+    // 4. 返回结果
+    results.clear();
+    results.push_back(0.0f);
+    results.push_back(0.0f);
+    results.push_back(ems);
+    results.push_back(emh);
 }
 
 void RT::sample_hom(std::shared_ptr<PixelIO> &m_pPixelio)
@@ -2158,7 +2574,7 @@ void RT::sample_urban(std::shared_ptr<PixelIO> &m_pPixelio)
 
     float fss, fsh, frs, frh, fws, fwh;
     int ifP = 0;
-    calculate_direct_emissivity(canopy, angle, building, fss, fsh, frs, frh, fws, fwh, ifP);
+    directional_emissivity_direct(canopy, angle, building, fss, fsh, frs, frh, fws, fwh, ifP);
 
     std::array<float, 6> Ecom = {building.Estreat, building.Estreat, building.Eroof, building.Eroof, building.Ewall, building.Ewall};
     std::array<float, 6> Tcom = {tts_temp, tth_temp, trs_temp, trh_temp, tws_temp, twh_temp};
@@ -2180,7 +2596,7 @@ void RT::sample_urban(std::shared_ptr<PixelIO> &m_pPixelio)
     }
 
     float mss, msh, mrs, mrh, mws, mwh;
-    calculate_scattering_emissivity(canopy, angle, building, mss, msh, mrs, mrh, mws, mwh, ifP);        // 计算散射辐射传输因子
+    directional_emissivity_scatter(canopy, angle, building, mss, msh, mrs, mrh, mws, mwh, ifP);        // 计算散射辐射传输因子
     std::array<float, 6> Ecom_scatter = {mss, msh, mrs, mrh, mws, mwh};
     std::array<float, 6> Rcom_scatter = {};
     float Ecom_scatter_sum = mss + msh + mrs + mrh+ mws + mwh;
@@ -2204,466 +2620,238 @@ void RT::sample_urban(std::shared_ptr<PixelIO> &m_pPixelio)
 }
 
 
-void RT::satTirt(std::shared_ptr<PixelIO> &m_pPixelio)
+void RT::sample_slope(std::shared_ptr<PixelIO> &m_pPixelio)
 {
-    // 获取 PixelIO 中的各种数据
+    int ifradiance = 0;
     Canopy &canopy = m_pPixelio->m_pInputset->canopy;
     Thermal &thermal = m_pPixelio->m_pDynamicVariable->thermal;
     Spectral &spectral = m_pPixelio->m_pStaticVariable->spectal;
+    Angle &angle = m_pPixelio->m_angle;
     Satellite &satellite = m_pPixelio->m_pDynamicVariable->satellite;
 
-    int type_temp = canopy.type;
+    Terrain &terrain = m_pPixelio->m_pInputset->terrain;
+    float slope_temp = terrain.slope;
+    float aspect_temp = terrain.slope;
 
-    // 定义要检查的类型集合
-    std::vector<int> hom_types = {8, 9, 10, 12, 14, 15, 16};
-    std::vector<int> canopy_types = {1, 2, 3, 4, 5, 6, 7};
-    std::vector<int> urban_types = {13};
+    // 计算地形调整因子
+    float rd = M_PI / 180.0f;
+    float cos_slope = cos(slope_temp * rd);
 
-    // 判断条件
-    bool ind_hom = std::find(hom_types.begin(), hom_types.end(), type_temp) != hom_types.end();
-    bool ind_crown = std::find(canopy_types.begin(), canopy_types.end(), type_temp) != canopy_types.end();
-    bool ind_urban = std::find(urban_types.begin(), urban_types.end(), type_temp) != urban_types.end();
+    // 调整 canopy 参数
+    float std_temp = canopy.treeStand * cos_slope;           // 立木度调整
+    float hcr_temp = canopy.canopyHeight * cos_slope;        // 树高调整
+    float hspot_temp = canopy.hspot / cos_slope;             // 热点参数调整
 
-    if (ind_hom) {
-        sample_hom(m_pPixelio);
-    }
-    else if (ind_crown) {
-        sample_canopy(m_pPixelio);
-    }
-    else if (ind_urban) {
-        sample_urban(m_pPixelio);
-    }
-    else    {
-        m_pPixelio->m_DBT = 0;
-    }
-
-}
+    // 更新 canopy 参数用于后续计算
+    canopy.treeStand = std_temp;
+    canopy.canopyHeight = hcr_temp;
+    canopy.hspot = hspot_temp;
 
 
-typedef struct {
-    float length;
-    float width;
-    float height;
-    float alpha;
-} Shape;
+    int hh = std::stoi(satellite.time.substr(0, 2)); // 提取前两位作为小时
+    int MM = std::stoi(satellite.time.substr(2, 2)); // 提取后两位作为分钟
+    float ratio = MM / 60.0f; // 计算插值比例
+    float tch_temp = (1 - ratio) * m_pPixelio->m_vTch[hh] + ratio * m_pPixelio->m_vTch[hh + 1];
+    float tss_temp = (1 - ratio) * m_pPixelio->m_vTss[hh] + ratio * m_pPixelio->m_vTss[hh + 1];
+    float tsh_temp = (1 - ratio) * m_pPixelio->m_vTsh[hh] + ratio * m_pPixelio->m_vTsh[hh + 1];
+    float tcs_temp = (1 - ratio) * m_pPixelio->m_vTcs[hh] + ratio * m_pPixelio->m_vTcs[hh + 1];
 
-void calculate_component_fraction(float length, float width, float height, float density, float sza, float saa,
-                                  float* frs, float* frh, float* fws, float* fwh, float* fss, float* fsh)
-{
-    Shape shapes[1] = {
-        {length, width, height, density}
-    };
-    int n_shape = sizeof(shapes) / sizeof(shapes[0]);
-    int n_part = 100;
+    float treestand_temp = canopy.treeStand;
+    float canopyheight_temp = canopy.canopyHeight;
+    float lai_temp = canopy.lai;
+    float b_temp = canopy.b;
+    float radi_vertical_temp = canopyheight_temp / 2.0;
+    float radi_horizontal_temp = canopyheight_temp / (2.0 * b_temp);
 
-    // Constants
-    double rd = M_PI / 180.0;
-    double total_pRoof_sunlit = 0, total_pRoof_shaded = 0;
-    double total_pWallV_sunlit = 0, total_pWallV_shaded = 0;
-    double total_pStreetV_sunlit = 0, total_pStreetV_shaded = 0;
-    int n_vza = 0;
+    float vza_temp = satellite.vza;
+    float sza_temp = satellite.sza;
+    float vaa_temp = satellite.vaa;
+    float saa_temp = satellite.saa;
+    float raa_temp = std::abs(vaa_temp - saa_temp);
 
-    for (double vza = 0; vza <= 1; vza += 5)
+    angle.vza = vza_temp;
+    angle.sza = sza_temp;
+    angle.vaa = vaa_temp;
+    angle.saa = saa_temp;
+
+    float emis_s_temp = m_pPixelio->emis_s;
+    float emis_v_temp = m_pPixelio->emis_v;
+    spectral.soilRefl_ir = 1 - emis_s_temp;
+    spectral.leafRefl_ir = 1 - emis_v_temp;
+
+    if(lai_temp<=0)     // 如果叶面积指数（LAI）小于等于0，表示没有植被
     {
-        double abs_vza = fabs(vza);
-        double vaa = (n_vza > 11) ? 0 : 180;
-        double raa = vaa - saa;
-
-        // Calculate angles in radians
-        double ui = cos(sza * rd);
-        double uv = cos(abs_vza * rd);
-        double si = sin(sza * rd);
-        double sv = sin(abs_vza * rd);
-        double up = cos(raa * rd);
-        double tantv = tan(abs_vza * rd);
-        double tants = tan(sza * rd);
-
-        double projv = 0, projs = 0, projvs = 0;
-        double laa = 0, waa = laa + 90;
-
-        for (int kshape2 = 0; kshape2 < n_shape; kshape2++)
-        {
-            Shape shape2 = shapes[kshape2];
-            double length2 = shape2.length;
-            double width2 = shape2.width;
-            double height2 = shape2.height;
-            double alpha2 = shape2.alpha;
-
-            double height2m1 = height2 - 0;
-            if (height2m1 <= 0) continue;
-
-            // Calculate projections
-            double proj_roof = alpha2 * length2 * width2;
-            double projv_wall = alpha2 * (height2m1 * length2 * tantv * fabs(cos((vaa - laa) * rd)) +
-                                          height2m1 * width2 * tantv * fabs(cos((vaa - waa) * rd)));
-            projv += projv_wall + proj_roof;
-
-            double projs_wall = alpha2 * (height2m1 * length2 * tants * fabs(cos((saa - laa) * rd)) +
-                                          height2m1 * width2 * tants * fabs(cos((saa - waa) * rd)));
-            projs += projs_wall + proj_roof;
+        float rad = SCI::Planck(10.5,tss_temp);        // 通过 Planck 函数计算辐射值（波长 10.5 微米）
+        rad = rad *(1-emis_s_temp);        // 考虑土壤的反射率，调整辐射值
+        if (isnan(rad)) {
+            m_pPixelio->m_DBT = 0;
+            return;
+        }
+        if(rad > 20 || rad < 3) {m_pPixelio->m_DBT = 273.17; } // 如果辐射值不在合理范围内（3 到 20），将结果设为 273.17 K
+        else{
+            m_pPixelio->m_DBT = SCI::invPlanck(10.5,rad);  // 否则，通过反向 Planck 函数计算温度并设置结果
+        }
+    }else
+    {
+        std::array<float, 4> Ecom = {emis_s_temp, emis_s_temp, emis_v_temp, emis_v_temp};
+        std::array<float, 4> Tcom = {tss_temp, tsh_temp, tcs_temp, tch_temp};
+        std::array<float, 4> Rcom;
+        for (int i = 0; i < 4; ++i) {
+            Rcom[i] = SCI::Planck(10.5, Tcom[i]);
         }
 
-        // Calculate overlapping factor
-        double Overlapping = sqrt(tantv * tantv + tants * tants - 2 * tantv * tants * up) / (tantv + tants);
-        projvs = projv + projs * Overlapping;
+        // 计算各方向的比例因子
+        float fss, fsh, fcs, fch;
+        tirt_direct_canopy(canopy, angle, fss, fsh, fcs, fch);
+        std::array<float, 4> Pcom = {fss, fsh, fcs, fch};
 
-        // Calculate street visibility (StreetV)
-        double pStreetV = exp(-projv);
-        double pStreetS = exp(-projs);
-        double pStreetV_sunlit = exp(-projvs);
-        double pStreetV_shaded = pStreetV - pStreetV_sunlit;
-        double pStreetV_sunlit_fraction = pStreetV_sunlit / pStreetV;
-
-        // Calculate roof visibility
-        double pRoofV = 0, pRoofS = 0, pRoof_sunlit = 0;
-        for (int kshape1 = 0; kshape1 < n_shape; kshape1++)
-        {
-            Shape shape1 = shapes[kshape1];
-            double length1 = shape1.length;
-            double width1 = shape1.width;
-            double height1 = shape1.height;
-            double alpha1 = shape1.alpha;
-
-            projv = 0;
-            projs = 0;
-
-            for (int kshape2 = 0; kshape2 < n_shape; kshape2++)
-            {
-                Shape shape2 = shapes[kshape2];
-                double length2 = shape2.length;
-                double width2 = shape2.width;
-                double height2 = shape2.height;
-                double alpha2 = shape2.alpha;
-
-                double height2m1 = height2 - height1;
-                if (height2m1 <= 0) continue;
-
-                double proj_roof = alpha2 * length2 * width2;
-                double projv_wall = alpha2 * (height2m1 * length2 * tantv * fabs(cos((vaa - laa) * rd)) +
-                                              height2m1 * width2 * tantv * fabs(cos((vaa - waa) * rd)));
-                projv += projv_wall + proj_roof;
-
-                double projs_wall = alpha2 * (height2m1 * length2 * tants * fabs(cos((saa - laa) * rd)) +
-                                              height2m1 * width2 * tants * fabs(cos((saa - waa) * rd)));
-                projs += projs_wall + proj_roof;
-            }
-
-            Overlapping = sqrt(tantv * tantv + tants * tants - 2 * tantv * tants * up) / (tantv + tants);
-            projvs = projv + projs * Overlapping;
-
-            double gapv_roof = exp(-projv);
-            double gaps_roof = exp(-projs);
-            double gapvs_roof = exp(-projvs);
-
-            double pRoofV_temp = alpha1 * gapv_roof * length1 * width1;
-            pRoofV += pRoofV_temp;
-
-            double pRoofS_temp = alpha1 * gaps_roof * length1 * width1;
-            pRoofS += pRoofS_temp;
-
-            double pRoof_sunlit_temp = alpha1 * gapvs_roof * length1 * width1;
-            pRoof_sunlit += pRoof_sunlit_temp;
+        // 计算直接辐射部分
+        std::array<float, 4> Ecom_direct = {};
+        float Ecom_direct_sum = 0;
+        for (int k = 0; k < 4; ++k) {
+            Ecom_direct[k] = Pcom[k] * Ecom[k];
+            Ecom_direct_sum += Ecom_direct[k];
         }
 
-        double pRoof_shaded = pRoofV - pRoof_sunlit;
+        // 计算散射辐射部分
+        float mss, msh, mcs, mch;
+        tirt_scatter(canopy, angle, spectral, mss, msh, mcs, mch);
+        std::array<float, 4> Ecom_scatter = {mss, msh, mcs, mch};
+        float Ecom_scatter_sum = mss + msh + mcs + mch;
 
-        // Calculate wall visibility and sunlit fractions
-        double pWall_sunlit_fraction = 0, pWall_sunlit_fraction_Weight = 0;
-        for (int kshape1 = 0; kshape1 < n_shape; kshape1++)
-        {
-            Shape shape1 = shapes[kshape1];
-            double length1 = shape1.length;
-            double width1 = shape1.width;
-            double height1 = shape1.height;
-            double alpha1 = shape1.alpha;
+        // 计算角度因子
+        float rd = M_PI / 180.0f;
+        float uii = cos(sza_temp * rd);
+        float uvv = cos(slope_temp * rd);  // pza是slope
+        float sii = sin(sza_temp * rd);
+        float svv = sin(slope_temp * rd);  // pza是slope
+        float upp = cos(std::abs(aspect_temp - saa_temp) * rd);  // paa是aspect
+        float cosang = uvv * uii + svv * sii * upp;
 
-            double dheight = height1 / n_part;
+        // 根据cosang调整Ecom_direct和Ecom_scatter
+        std::array<float, 4> Ecom_direct_new, Ecom_scatter_new;
 
-            projv = 0;
-            projs = 0;
-
-            for (int kh = 0; kh < n_part; kh++)
-            {
-                double height_temp = dheight * (kh + 0.5);
-                double proj = (shapes[kshape1].height - height_temp) * shapes[kshape1].alpha * tantv;
-                proj = fmax(proj, 0);
-
-                double area_roof = shapes[kshape1].alpha * shapes[kshape1].width * shapes[kshape1].length;
-                area_roof = fmax(area_roof, 0);
-                double proj_roof = area_roof;
-
-                double projv_wall = (proj * shapes[kshape1].length * fabs(cos((vaa - laa) * rd)) +
-                                     proj * shapes[kshape1].width * fabs(cos((vaa - waa) * rd)));
-
-                double projs_wall = (proj * shapes[kshape1].length * fabs(cos((saa - laa) * rd)) +
-                                     proj * shapes[kshape1].width * fabs(cos((saa - waa) * rd)));
-
-                projv += projv_wall + proj_roof;
-                projs += projs_wall + proj_roof;
-            }
-
-            projv /= n_part;
-            projs /= n_part;
-
-            Overlapping = sqrt(tantv * tantv + tants * tants - 2 * tantv * tants * up) / (tantv + tants);
-            projvs = projv + projs * Overlapping;
-
-            double gapv_wall = exp(-projv);
-            double gapvs_wall = exp(-projvs);
-
-            // Calculate sunlit fraction
-            double lsunlit = 0;
-            double part1 = fabs(laa - saa);
-            if (part1 > 180) part1 = 360 - part1;
-            double part2 = fabs(laa - vaa);
-            if (part2 > 180) part2 = 360 - part2;
-            if (part1 < 90 && part2 < 90) lsunlit = 1;
-
-            double wsunlit = 0;
-            part1 = fabs(waa - saa);
-            if (part1 > 180) part1 = 360 - part1;
-            part2 = fabs(waa - vaa);
-            if (part2 > 180) part2 = 360 - part2;
-            if (part1 < 90 && part2 < 90) wsunlit = 1;
-
-            pWall_sunlit_fraction += alpha1 * gapvs_wall * ((height1 * length1 * tantv * fabs(cos((vaa - laa) * rd))) *
-                                                            lsunlit +
-                                                            (height1 * width1 * tantv * fabs(cos((vaa - waa) * rd)) * wsunlit));
-            pWall_sunlit_fraction_Weight += alpha1 * gapv_wall * ((height1 * length1 * tantv * fabs(
-                    cos((vaa - laa) * rd))) +
-                                                                  (height1 * width1 * tantv * fabs(cos((vaa - waa) * rd))));
+        if (cosang < 0) {
+            Ecom_direct_new = {0, Ecom_direct[0] + Ecom_direct[1], 0, Ecom_direct[2] + Ecom_direct[3]};
+            Ecom_scatter_new = {0, Ecom_scatter[0] + Ecom_scatter[1], 0, Ecom_scatter[2] + Ecom_scatter[3]};
+        } else {
+            Ecom_direct_new = Ecom_direct;
+            Ecom_scatter_new = Ecom_scatter;
         }
 
-        if (pWall_sunlit_fraction_Weight != 0)
-            pWall_sunlit_fraction /= pWall_sunlit_fraction_Weight;
-        else
-            pWall_sunlit_fraction = 0;
-
-        double pWallV = pWall_sunlit_fraction_Weight;
-        double pWallV_sunlit = pWallV * pWall_sunlit_fraction;
-        double pWallV_shaded = pWallV - pWallV_sunlit;
-
-        pStreetV = 1 - pWallV - pRoofV;
-        pStreetV_sunlit = pStreetV * pStreetV_sunlit_fraction;
-        pStreetV_shaded = pStreetV - pStreetV_sunlit;
-
-        // Accumulate each proportion value
-        if (pRoof_sunlit < 0 || pRoof_sunlit > 1 ||
-            pRoof_shaded < 0 || pRoof_shaded > 1 ||
-            pWallV_sunlit < 0 || pWallV_sunlit > 1 ||
-            pWallV_shaded < 0 || pWallV_shaded > 1 ||
-            pStreetV_sunlit < 0 || pStreetV_sunlit > 1 ||
-            pStreetV_shaded < 0 || pStreetV_shaded > 1)
-        {
-            continue;
+        // 计算辐射值
+        float Rcom_direct_sum = 0.0f;
+        float Rcom_scatter_sum = 0.0f;
+        for (int k = 0; k < 4; ++k) {
+            Rcom_direct_sum += Ecom_direct_new[k] * Rcom[k];
+            Rcom_scatter_sum += Ecom_scatter_new[k] * Rcom[k];
         }
-        n_vza++;
-        total_pRoof_sunlit += pRoof_sunlit;
-        total_pRoof_shaded += pRoof_shaded;
-        total_pWallV_sunlit += pWallV_sunlit;
-        total_pWallV_shaded += pWallV_shaded;
-        total_pStreetV_sunlit += pStreetV_sunlit;
-        total_pStreetV_shaded += pStreetV_shaded;
-    }
 
-    *frs = (float)(total_pRoof_sunlit / n_vza);
-    *frh = (float)(total_pRoof_shaded / n_vza);
-    *fws = (float)(total_pWallV_sunlit / n_vza);
-    *fwh = (float)(total_pWallV_shaded / n_vza);
-    *fss = (float)(total_pStreetV_sunlit / n_vza);
-    *fsh = (float)(total_pStreetV_shaded / n_vza);
-}
 
-void RT::netrad_shortwave_urban(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<PixelIO> m_pPixelio) {
-    // 获取动态变量和静态变量
-    NetRad &netrad = m_pPixelio->m_pDynamicVariable->netrad;  // 短波净辐射
-    Spectral &spectral = m_pPixelio->m_pStaticVariable->spectal;  // 光谱信息
-    Urban &urban = m_pPixelio->m_pInputset->urban;  // 城市结构信息
-    float sza = m_pPixelio->m_angle.sza;  // 太阳高度角
-    float saa = m_pPixelio->m_angle.saa; // 太阳方位角
-    int k_node = m_pPixelio->k_node;  // 节点索引
-    Meteo &meteo = m_pPixelio->m_pInputset->vMeteo[k_node];  // 气象数据
-    float *direct_ = m_pDefined->m_atomcond.fesun;  // 直接辐射
-    float *diffuse_ = m_pDefined->m_atomcond.fesky;  // 散射辐射
-    float *wl_ = m_pDefined->m_atomcond.wl;  // 波长
+        // 计算总辐射
+        float rad = (Rcom_direct_sum + Rcom_scatter_sum) / (Ecom_direct_sum + Ecom_scatter_sum);
 
-    // 初始化净辐射变量
-    netrad.diffuseVrad_roof = 0;  // 屋顶散射辐射
-    netrad.directVrad_roof = 0;  // 屋顶直接辐射
-    netrad.diffuseVrad_wall = 0;  // 墙壁散射辐射
-    netrad.directVrad_wall = 0;  // 墙壁直接辐射
-    netrad.diffuseVrad_street = 0;  // 街道散射辐射
-    netrad.directVrad_street = 0;  // 街道直接辐射
-
-    netrad.directPrad_roof = 0;  // 屋顶直接辐射强度
-    netrad.diffusePrad_roof = 0.0;  // 屋顶散射辐射强度
-    netrad.directPrad_wall = 0;  // 墙壁直接辐射强度
-    netrad.diffusePrad_wall = 0.0;  // 墙壁散射辐射强度
-    netrad.directPrad_street = 0;  // 街道直接辐射强度
-    netrad.diffusePrad_street = 0.0;  // 街道散射辐射强度
-
-    //读取城市结构参数，测试时采用默认值
-//    float height = urban.height;
-//    float length = urban.length;
-//    float width = urban.width;
-//    float density = urban.density;
-    float height = 20;
-    float length = 10;
-    float width = 10;
-    float density = 0.0015;
-
-    float hw_ratio = height / width; // h/w 的值
-    float sqrt_term = std::sqrt(hw_ratio * hw_ratio + 1); // [(h/w)^2 + 1]^(1/2)
-    float svf_s = sqrt_term - hw_ratio;
-    float svf_w = 0.5 * (hw_ratio + 1 - sqrt_term) / hw_ratio;
-
-    //初始化组分比例
-    float frs = 0;
-    float frh = 0;
-    float fws = 0;
-    float fwh = 0;
-    float fss = 0;
-    float fsh = 0;
-    calculate_component_fraction(length, width, height, density, sza, saa, &frs, &frh, &fws, &fwh, &fss, &fsh);
-
-    // 常数定义
-    float A = 6.02214E23;  // 阿伏伽德罗常数
-    float H = 6.6262E-34;  // 普朗克常数
-    float C = 299792458.0;  // 光速
-
-    // 条件判断，若入射辐射小于20或太阳高度角大于75，直接返回
-    if (meteo.rin < 20 || sza > 75)
-        return;
-
-    // 遍历所有光谱波段
-    for (int kband = 0; kband < N1; kband++) {
-        // 计算直接辐射和散射辐射
-        float Esun = meteo.rin * direct_[kband] * 0.001;
-        float Esky = meteo.rli * diffuse_[kband] * 0.001;
-        float diffuse_roof = 0.0;
-        float diffuse_wall = 0.0;
-        float diffuse_street = 0.0;
-        float direct_roof = 0.0;
-        float direct_wall = 0.0;
-        float direct_street = 0.0;
-
-        float wl = wl_[kband];  // 当前波段的波长
-        float ref_roof = 0.20;
-        float ref_wall = 0.13;
-        float ref_street = 0.18;
-        float BAI = (density * 1000 * 1000 * (length * width + 2 * height * length + 2 * height * width)) / (1000 * 1000);
-        m_pPixelio->m_pInputset->urban.bai = BAI;
-
-        // 计算城市各组分的散射辐射
-        diffuseScatter_VNIR_Urban(ref_roof, ref_wall, ref_street, svf_s, svf_w, frs, frh, fws, fwh, fss, fsh, BAI, sza, Esun, Esky, &diffuse_roof, &diffuse_wall, &diffuse_street);
-
-        // 更新净辐射值
-        netrad.diffuseVrad_roof += diffuse_roof;
-        netrad.diffuseVrad_wall += diffuse_wall;
-        netrad.diffuseVrad_street += diffuse_street;
-        netrad.directVrad_roof += (Esun / cos(sza * PI / 180.0))  * (1 - ref_roof) + Esky * (1 - ref_roof);
-        netrad.directVrad_wall += (Esun / sin(sza * PI / 180.0)) * (1 - ref_wall) + Esky * (1 - ref_wall) * svf_w;
-        netrad.directVrad_street += (Esun / cos(sza * PI / 180.0)) * (1 - ref_street) + Esky * (1 - ref_street) * svf_s;
-
+        if (isnan(rad)) {
+            m_pPixelio->m_DBT = 0;
+            return;
+        }
+        if(rad > 20 || rad < 3) {
+            m_pPixelio->m_DBT = 273.17;
+        } else {
+            m_pPixelio->m_DBT = SCI::invPlanck(10.5, rad);
+        }
     }
 }
 
-
-void RT::netrad_longwave_urban(std::shared_ptr<Defined> m_pDefined,std::shared_ptr<PixelIO>  m_pPixelio)
+void RT::sample_terrain(std::shared_ptr<PixelIO> &m_pPixelio)
 {
+    int ifP = 0;
+    Canopy &canopy = m_pPixelio->m_pInputset->canopy;
+    Thermal &thermal = m_pPixelio->m_pDynamicVariable->thermal;
+    Spectral &spectral = m_pPixelio->m_pStaticVariable->spectal;
+    Angle &angle = m_pPixelio->m_angle;
+    Satellite &satellite = m_pPixelio->m_pDynamicVariable->satellite;
+    Terrain &terrain = m_pPixelio->m_pInputset->terrain;
 
-    // 获取需要操作的变量引用
-    NetRad &netrad = m_pPixelio->m_pDynamicVariable->netrad; // 存储辐射变量的引用
-    Spectral &spectral = m_pPixelio->m_pStaticVariable->spectal; // 光谱信息的引用
-    Canopy &canopy = m_pPixelio->m_pInputset->canopy; // 冠层参数的引用
-    int k_node = m_pPixelio->k_node; // 节点索引
-    Meteo &meteo = m_pPixelio->m_pInputset->vMeteo[k_node]; // 气象数据的引用
-    Thermal &thermal = m_pPixelio->m_pDynamicVariable->thermal; // 热力学变量的引用
-    Urban &urban = m_pPixelio->m_pInputset->urban;
+    int hh = std::stoi(satellite.time.substr(0, 2)); // 提取前两位作为小时
+    int MM = std::stoi(satellite.time.substr(2, 2)); // 提取后两位作为分钟
+    float ratio = MM / 60.0f; // 计算插值比例
+    float tch_temp = (1 - ratio) * m_pPixelio->m_vTch[hh] + ratio * m_pPixelio->m_vTch[hh + 1];
+    float tss_temp = (1 - ratio) * m_pPixelio->m_vTss[hh] + ratio * m_pPixelio->m_vTss[hh + 1];
+    float tsh_temp = (1 - ratio) * m_pPixelio->m_vTsh[hh] + ratio * m_pPixelio->m_vTsh[hh + 1];
+    float tcs_temp = (1 - ratio) * m_pPixelio->m_vTcs[hh] + ratio * m_pPixelio->m_vTcs[hh + 1];
 
-    netrad.diffuseTrad_roof = 0;
-    netrad.directTrad_roof = 0;
-    netrad.diffuseTrad_wall = 0;
-    netrad.directTrad_wall = 0;
-    netrad.diffuseTrad_street = 0;
-    netrad.directTrad_street = 0;
+    float treestand_temp = canopy.treeStand;
+    float canopyheight_temp = canopy.canopyHeight;
+    float lai_temp = canopy.lai;
+    float b_temp = canopy.b;
+    float radi_vertical_temp = canopyheight_temp / 2.0;
+    float radi_horizontal_temp = canopyheight_temp / (2.0 * b_temp);
 
-    // rad in and rad out
-    float Esun = 0; // 太阳直射辐射，这里初始化为0，因为长波辐射主要考虑天空漫射
-    float Esky = meteo.rli; // 天空漫射辐射
-    float diffuse_roof = 0.0;
-    float diffuse_wall = 0.0;
-    float diffuse_street = 0.0;
-    float direct_roof = 0.0;
-    float direct_wall = 0.0;
-    float direct_street = 0.0;
+    float vza_temp = satellite.vza;
+    float sza_temp = satellite.sza;
+    float vaa_temp = satellite.vaa;
+    float saa_temp = satellite.saa;
 
-    netrad.directTrad_roof = 0;
-    netrad.directTrad_wall = 0;
-    netrad.directTrad_street = 0;
-    netrad.diffuseTrad_roof = 0;
-    netrad.diffuseTrad_wall = 0;
-    netrad.diffuseTrad_street = 0;
+    angle.vza = vza_temp;
+    angle.sza = sza_temp;
+    angle.vaa = vaa_temp;
+    angle.saa = saa_temp;
 
-    // 获取热力学变量中的温度信息
-    float Trs = thermal.Troofsunlit;
-    float Trh = thermal.Troofshaded;
-    float Tws = thermal.Twallsunlit;
-    float Twh = thermal.Twallshaded;
-    float Tss = thermal.Tstreetsunlit;
-    float Tsh = thermal.Tstreetshaded;
+    float emis_s_temp = m_pPixelio->emis_s;
+    float emis_v_temp = m_pPixelio->emis_v;
+    spectral.soilRefl_ir = 1 - emis_s_temp;
+    spectral.leafRefl_ir = 1 - emis_v_temp;
 
-    float bai = urban.bai;
-    // compo info
-    float emis_roof = 0.950;
-    float emis_wall = 0.920;
-    float emis_street = 0.955;
-    float rrho = 1 - emis_roof;
-    float wrho = 1 - emis_wall;
-    float srho = 1 - emis_street;
-    float ltau = 0.0;
+    if(lai_temp<=0)     // 如果叶面积指数（LAI）小于等于0，表示没有植被
+    {
+        float rad = SCI::Planck(10.5,tss_temp);        // 通过 Planck 函数计算辐射值（波长 10.5 微米）
+        rad = rad *(1-emis_s_temp);        // 考虑土壤的反射率，调整辐射值
+        if (isnan(rad)) {
+            m_pPixelio->m_DBT = 0;
+            return;
+        }
+        if(rad > 20 || rad < 3) {m_pPixelio->m_DBT = 273.17; } // 如果辐射值不在合理范围内（3 到 20），将结果设为 273.17 K
+        else{
+            m_pPixelio->m_DBT = SCI::invPlanck(10.5,rad);  // 否则，通过反向 Planck 函数计算温度并设置结果
+        }
+    }else
+    {
+        std::vector<float> direct_emissivity, scatter_emissivity;
+        component_emissivity_direct(canopy, angle, terrain, direct_emissivity, ifP);
+        component_emissivity_scatter(canopy, angle, spectral, scatter_emissivity, ifP);
 
-    float Ers = SCI::StefanBoltzmann(Trs);
-    float Erh = SCI::StefanBoltzmann(Trh);
-    float Ews = SCI::StefanBoltzmann(Tws);
-    float Ewh = SCI::StefanBoltzmann(Twh);
-    float Ess = SCI::StefanBoltzmann(Tss);
-    float Esh = SCI::StefanBoltzmann(Tsh);
-    float prs = 0.5, pws = 0.5, pss = 0.5;
-    float Er = Ers * prs + Erh * (1 - prs);  // 混合太阳辐射
-    float Ew = Ews * pws + Ewh * (1 - pws);  // 混合太阳辐射
-    float Es = Ess * pss + Esh * (1 - pss);  // 混合太阳辐射
-    float p= 0.88 * (1 - exp(-0.7 * pow(bai, 0.75))); //需要计算，先写定值
-    float up = (1 - p) / 2.0; //不准确但是这里简单认为向上向下概率相同
-    netrad.directTrad_roof = 0;
-    netrad.directTrad_wall = 0;
-    netrad.directTrad_street = 0;
+        std::array<float, 4> Ecom = {emis_s_temp, emis_s_temp, emis_v_temp, emis_v_temp};
+        std::array<float, 4> Tcom = {tss_temp, tsh_temp, tcs_temp, tch_temp};
+        std::array<float, 4> Rcom;
+        std::array<float, 4> emissivity_;
+        float emissivity_sum, Rcom_sum;
 
-    float sza = m_pPixelio->m_angle.sza;
-    float saa = m_pPixelio->m_angle.saa;
-    float rs = spectral.soilRefl_ir;
-    float wl = -1;
+        const size_t number_component = Tcom.size();
+        for(size_t k = 0; k < number_component; ++k) {
+            emissivity_[k] = direct_emissivity[k] + scatter_emissivity[k];
+            Rcom[k] = SCI::Planck(10.5,Tcom[k]) * emissivity_[k];
+            emissivity_sum += emissivity_[k];
+            Rcom_sum += Rcom[k];
+        }
 
-    float height = 20;
-    float length = 10;
-    float width = 10;
-    float density = 0.0015;
-    float hw_ratio = height / width; // h/w 的值
-    float sqrt_term = std::sqrt(hw_ratio * hw_ratio + 1); // [(h/w)^2 + 1]^(1/2)
-    float svf_s = sqrt_term - hw_ratio;
-    float svf_w = 0.5 * (hw_ratio + 1 - sqrt_term) / hw_ratio;
-
-    //初始化组分比例
-    float frs = 0;
-    float frh = 0;
-    float fws = 0;
-    float fwh = 0;
-    float fss = 0;
-    float fsh = 0;
-    calculate_component_fraction(length, width, height, density, sza, saa, &frs, &frh, &fws, &fwh, &fss, &fsh);
-    //如果叶面积指数大于0,调用 diffuseScatter_TIR 函数计算叶片和土壤的散射辐射,累加叶片和土壤的散射辐射到净辐射变量中。
-    diffuseScatter_TIR_urban(bai, svf_w, svf_s, frs, frh, fws, fwh, fss, fsh, rrho, wrho, srho, sza, Esun, Esky, Trs, Trh, Tws, Twh, Tss, Tsh,&diffuse_roof, &diffuse_wall, &diffuse_street);
-    netrad.diffuseTrad_roof += diffuse_roof;
-    netrad.diffuseTrad_wall += diffuse_wall;
-    netrad.diffuseTrad_street += diffuse_street;
+        float rad = Rcom_sum / emissivity_sum;
+        if (isnan(rad)) {
+            m_pPixelio->m_DBT = 0;
+            return;
+        }
+        if(rad > 20 || rad < 3) {
+            m_pPixelio->m_DBT = 273.17;
+        }
+        else{
+            m_pPixelio->m_DBT = SCI::invPlanck(10.5,rad);
+        }
+    }
 }
+
+
+
+
+
+
+
