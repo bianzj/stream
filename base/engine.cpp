@@ -39,7 +39,7 @@ int Engine::upload(int year, int doy) {
     std::ostringstream  oss_doy;
     std::string year_str = std::to_string(year);
     oss_doy << std::setw(3)<<std::setfill('0')<<doy;
-    std::string m_wdirnew = m_fileio->m_inputDir + year_str + "/" + oss_doy.str() + "/";
+    std::string m_wdirnew = m_fileio->m_inputDir +"/force/"+ year_str + "/" + oss_doy.str() + "/";
 
     if (access(m_wdirnew.c_str(),0)==-1){
         return -1;

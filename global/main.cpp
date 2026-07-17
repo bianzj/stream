@@ -30,7 +30,7 @@ int main(int argc,char* argv[])
 //-----------------------------------------------
 // huabei area: 1km: width 400-500 180-280 *25
 //-----------------------------------------------
-    std::string infilepath = "/home/hero/4-stream_simulation/fourstream/stream_test/input-vcmax.txt";
+    std::string infilepath = "/home/hero/data/stream/input-25km-global-local.txt";
 
     Engine engine;
     engine.initProject(infilepath);

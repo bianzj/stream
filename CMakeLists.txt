@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 20)
 include_directories(.)
 
 add_executable(stream
-        global/main.cpp
+        china/main.cpp
         base/aerodynamic.h
         base/biochemical.cpp
         base/biochemical.h

@@ -378,7 +378,7 @@ void Model::inputGeoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelI
     for (int kheight = startHeight; kheight < endHeight; kheight++) {
         for(int kwidth =startWidth; kwidth < endWidth; kwidth++) {
             k_pos = kheight * width + kwidth;
-            if ( (fileio->m_vType[k_pos] > 16) || (fileio->m_vType[k_pos] == 13) )  {
+            if ( (fileio->m_vType[k_pos] > 16) || (fileio->m_vType[k_pos] == 0) )  {
                 //fileio->m_vPos[k_pos] = -1;
                 continue;
             }
@@ -513,6 +513,7 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
             }
         }
 
+        // wetland
         if((pixelio->m_pInputset->canopy.type == 11) * (pixelio->m_pInputset->canopy.lai<=0))
         {
             pixelio->m_pInputset->canopy.type = 17;
@@ -520,34 +521,6 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
             pixelio->m_pInputset->leafbio = temp_leafbio;
         }
 
-        // if(fileio->m_issubtype == 1){
-        //     int ksubtype_temp = 0;
-        //     long ksubpos_temp = pixelio->k_height * fileio->m_width + pixelio->k_width;
-        //     ksubtype_temp = fileio->m_subType[ksubpos_temp];
-        //     if(ksubtype_temp == 2)
-        //     {
-        //         if((doy > 105) & (doy < 235)){
-        //             auto & temp_canopy = modelio->m_pDefined->m_mCanopy[16];
-        //             auto lai_backup = pixelio->m_pInputset->canopy.lai;
-        //             pixelio->m_pInputset->canopy = temp_canopy;
-        //             pixelio->m_pInputset->canopy.lai = lai_backup;
-        //             auto  & temp_leafbio = modelio->m_pDefined->m_mLeafbio[16];
-        //             pixelio->m_pInputset->leafbio = temp_leafbio;
-        //         }
-        //     }
-        //
-        //     if(ksubtype_temp == 3){
-        //         if((doy > 150) * (doy < 300)){
-        //             auto & temp_canopy = modelio->m_pDefined->m_mCanopy[16];
-        //             auto lai_backup = pixelio->m_pInputset->canopy.lai;
-        //             pixelio->m_pInputset->canopy = temp_canopy;
-        //             pixelio->m_pInputset->canopy.lai = lai_backup;
-        //             auto  & temp_leafbio = modelio->m_pDefined->m_mLeafbio[16];
-        //             pixelio->m_pInputset->leafbio = temp_leafbio;
-        //         }
-        //     }
-        //
-        // }
 
         if(fileio->m_isvcmax == 1)
         {

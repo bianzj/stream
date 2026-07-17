@@ -19,10 +19,7 @@
 #include "netcdf.h"
 #include <hdf5.h>
 #include <H5Cpp.h>
-#include <netcdf>
 
-using namespace netCDF;
-using namespace netCDF::exceptions;
 
 
 namespace Utils {

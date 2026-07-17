@@ -89,7 +89,7 @@ void FileIO::readMeta(std::string infilepath)
          m_islai = atoi(fields[0].c_str()); //判断是否存在lai文件，如果有则使用后续文件设置路径
          // m_laifile = fields[1];
          m_laidir = fields[1];
-         m_laifile = fields[2];
+         m_laifile1 = fields[2];
 
          // 第八段：读取土壤水分相关配置
          getline(infile,line);
@@ -97,7 +97,7 @@ void FileIO::readMeta(std::string infilepath)
          fields = Utils::splitt(line,deli);
          m_issm = atoi(fields[0].c_str());
          m_smdir = fields[1];
-         m_smfile = fields[2];
+         m_smfile1 = fields[2];
 
 
          // 第十一段：读取全局辅助数据相关配置
@@ -225,7 +225,7 @@ int FileIO::readMeteodata(int year, int doy) {
     std::ostringstream  oss_doy;
     std::string year_str = std::to_string(year);
     oss_doy << std::setw(3)<<std::setfill('0')<<doy;
-    std::string m_wdirnew = m_inputDir + year_str + "/" + oss_doy.str() + "/";
+    std::string m_wdirnew = m_inputDir + "/force/"+year_str + "/" + oss_doy.str() + "/";
 
 
     //-------------------------------------------------------

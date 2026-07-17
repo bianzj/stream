@@ -121,6 +121,8 @@ public:
     std::string m_laifile;
     std::string m_laidir;
     std::string m_smdir;
+    std::string m_smfile1;
+    std::string m_laifile1;
     std::string m_subtypefile;
     std::string m_globaldir;
     std::string m_vcmaxfile;
