@@ -692,6 +692,7 @@ int Model::inputSatData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelIO
 
 void Model::inputDefinedData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelIO> &modelio) {
 
+    std::cout<<"read defined data"<<std::endl;
     fileio->readDefined(modelio);
   //  m_pDefined->input(fileio->m_projectDir);
 }

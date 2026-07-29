@@ -27,6 +27,7 @@ void Engine::initVariable(int startWidth, int endWidth, int startHeight, int end
 
   //  m_modelio->inputGeoData(startWidth,endWidth,startHeight,endHeight);
     m_model->inputDefinedData(m_fileio,m_modelio);
+    std::cout<<"geo data"<<std::endl;
     m_model->inputGeoData(m_fileio, m_modelio, startWidth,endWidth,startHeight,endHeight);
 }
 
@@ -288,6 +289,7 @@ void Engine::run()
 {
 
     // 初始化变量
+    std::cout<<"inital variables"<<std::endl;
     initVariable(m_fileio->m_startwidth, m_fileio->m_endwidth, m_fileio->m_startheight, m_fileio->m_endheight);
 
     for(int kyear = m_fileio->startYear;kyear <= m_fileio->endYear;kyear++) {
@@ -308,11 +310,13 @@ void Engine::run()
             definedio->m_year = kyear;
             definedio->m_doy = kdoy;
             bool isok = true;
+
             if(isok == true){
                 thread_pool pool(N_THREAD);
                 for (int i = 0; i < m_modelio->m_vPixelio.size(); i++) {
                     std::shared_ptr<Defined> definedio = m_modelio->m_pDefined;
                     std::shared_ptr<PixelIO> pixelio = m_modelio->m_vPixelio[i];
+                    runpixel(m_model,definedio,pixelio,m_fileio);
                     pool.async(runpixel, m_model, definedio, pixelio, m_fileio);
                 }
             }
