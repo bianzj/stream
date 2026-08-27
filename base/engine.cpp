@@ -1,6 +1,23 @@
 #include <iostream>
+#include <algorithm>
+#include <cerrno>
+#include <cstdlib>
 
 #include "engine.h"
+
+namespace {
+unsigned int streamThreadCount() {
+    const char* value = std::getenv("STREAM_THREADS");
+    if (!value || *value == '\0') return N_THREAD;
+
+    errno = 0;
+    char* end = nullptr;
+    const unsigned long parsed = std::strtoul(value, &end, 10);
+    if (errno != 0 || end == value || *end != '\0') return N_THREAD;
+    return static_cast<unsigned int>(std::clamp(parsed, 1UL, 1024UL));
+}
+}
+
 
 
 
@@ -288,6 +305,9 @@ void Engine::sythrun() {
 void Engine::run()
 {
 
+    const unsigned int threadCount = streamThreadCount();
+    std::cout << "[STREAM] threads=" << threadCount << std::endl;
+
     // 初始化变量
     std::cout<<"inital variables"<<std::endl;
     initVariable(m_fileio->m_startwidth, m_fileio->m_endwidth, m_fileio->m_startheight, m_fileio->m_endheight);
@@ -312,11 +332,10 @@ void Engine::run()
             bool isok = true;
 
             if(isok == true){
-                thread_pool pool(N_THREAD);
+                thread_pool pool(threadCount);
                 for (int i = 0; i < m_modelio->m_vPixelio.size(); i++) {
                     std::shared_ptr<Defined> definedio = m_modelio->m_pDefined;
                     std::shared_ptr<PixelIO> pixelio = m_modelio->m_vPixelio[i];
-                    runpixel(m_model,definedio,pixelio,m_fileio);
                     pool.async(runpixel, m_model, definedio, pixelio, m_fileio);
                 }
             }
@@ -339,7 +358,8 @@ void Engine::subrun(int startWidth, int endWidth, int startHeight, int endHeight
     int width = m_fileio->m_width;
     int height = m_fileio->m_height;
     int num = m_modelio->m_vPixelio.size();
-    thread_pool pool(N_THREAD);
+    const unsigned int threadCount = streamThreadCount();
+    thread_pool pool(threadCount);
 
 
 
@@ -383,7 +403,8 @@ void Engine::subrun(int startWidth, int endWidth, int startHeight, int endHeight
             int width = m_fileio->m_width;
             int height = m_fileio->m_height;
             long num = m_modelio->m_vPixelio.size();
-            thread_pool pool(N_THREAD);
+            const unsigned int threadCount = streamThreadCount();
+            thread_pool pool(threadCount);
 
 
             upload(kyear, kdoy);

@@ -1,6 +1,7 @@
 
 
 #include "rt.h"
+#include <array>
 #include <numeric> // 添加这个头文件以使用 std::accumulate
 
 float RT::Jfunc1(float k, float l, float t)

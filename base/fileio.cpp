@@ -1,4 +1,5 @@
 #include "fileio.h"
+#include <algorithm>
 
 void FileIO::readMeta(std::string infilepath)
 {

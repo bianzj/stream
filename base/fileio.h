@@ -79,7 +79,7 @@ public:
 
     int m_issubtype;
     int m_isvcmax;
-    int m_satmode;
+    int m_satmode = 0;
 
     //图像范围经纬度相关
     float m_startlat_meteo;
