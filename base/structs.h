@@ -246,6 +246,9 @@ struct Meteo
     float p;
     float rin;
     float rli;
+    // Precipitation in mm per forcing time step.  Zero means no product was
+    // supplied; it is not an inferred rainfall value.
+    float precipitation = 0.0f;
 };
 
 struct AeroCoeff
@@ -418,12 +421,42 @@ struct BioState
     float cs; // Carbon surface
     float ci; // Carbon inside
     float es; // Water Surface
+    // Leaf-scale carbon fluxes, in umol CO2 m-2 leaf s-1.
+    float grossAssimilationSunlit = 0.0f;
+    float grossAssimilationShaded = 0.0f;
+    float netAssimilationSunlit = 0.0f;
+    float netAssimilationShaded = 0.0f;
+    float respirationSunlit = 0.0f;
+    float respirationShaded = 0.0f;
     float rssunlit;
     float rsshaded;
     float rss;
     float rssroof;
     float rsswall;
     float rssstreet;
+};
+
+// Minimal prognostic water/carbon pools.  These are only updated when the
+// balance feature is explicitly enabled.
+struct BalanceState
+{
+    bool initialized = false;
+    float soilWaterMm = 0.0f;
+    float leafCarbonGc = 0.0f;
+
+    float etMm = 0.0f;
+    float precipitationMm = 0.0f;
+    float runoffMm = 0.0f;
+    float grossAssimilationGc = 0.0f;
+    float plantRespirationGc = 0.0f;
+    float netAssimilationGc = 0.0f;
+
+    float dailyEtMm = 0.0f;
+    float dailyPrecipitationMm = 0.0f;
+    float dailyRunoffMm = 0.0f;
+    float dailyGrossAssimilationGc = 0.0f;
+    float dailyPlantRespirationGc = 0.0f;
+    float dailyNetAssimilationGc = 0.0f;
 };
 
 struct Resistance
@@ -455,6 +488,7 @@ struct Satellite
 struct DynamicVariable
 {
     BioState biostate;
+    BalanceState balance;
     Thermal thermal;
     Heatflux heatflux;
     NetRad netrad;

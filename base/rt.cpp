@@ -6,22 +6,16 @@
 float RT::Jfunc1(float k, float l, float t)
 {
     float del = (k - l) * t;  // 计算k和l的差值与时间t的乘积，del代表了这个差值的影响
-    float Jout = del;         // 初始化Jout为del
 
-    // 如果del大于1e-3，使用更精确的指数衰减公式计算Jout
-    if (del > 1e-3)
+    // 只有 k 和 l 足够接近时才使用泰勒近似；较大的正、负差值
+    // 都应使用原始指数公式。
+    if (std::abs(del) > 1e-3f)
     {
-        // 计算k和l在时间t内的指数衰减差值的平均，返回该值
-        Jout = ((exp(-l * t)) - exp(-k * t)) / (k - l);
+        return (std::exp(-l * t) - std::exp(-k * t)) / (k - l);
     }
 
-    // 如果del小于等于1e-3，使用近似的泰勒级数展开来计算Jout
-    if (del <= 1e-3)
-    {
-        // 使用泰勒展开来近似计算，减小误差
-        Jout = 0.5 * t * (exp(-k * t) + exp(-l * t)) * (1 - del * del / 12.0);
-    }
-    return Jout;  // 返回计算结果
+    return 0.5f * t * (std::exp(-k * t) + std::exp(-l * t)) *
+           (1.0f - del * del / 12.0f);
 }
 
 float RT::Jfunc2(float k, float l, float t)
@@ -321,6 +315,9 @@ void RT::diffuseScatter_VNIR(float lai, float rho, float tau, float rs, float sz
     float att = 1.0 - sigf;  // 计算辐射的衰减因子
     float m2 = (att + sigb) * (att - sigb);  // 计算辐射的平方因子，考虑吸收和透过的影响
 
+m2 = std::max(m2, 0.0f);
+if (std::abs(sigb) < 1e-6f) sigb = std::copysign(1e-6f, sigb);
+
     // m2的值必须大于0，确保物理意义的合理性
     float m = sqrt(m2);  // 计算衰减因子的平方根，得到最终的辐射衰减系数
 
@@ -342,6 +339,7 @@ void RT::diffuseScatter_VNIR(float lai, float rho, float tau, float rs, float sz
     // 计算反射率和透过率修正因子
     float re = rinf * e1;
     float denom = 1.0 - rinf2 * e2;
+    if (std::abs(denom) < 1e-6f) denom = std::copysign(1e-6f, denom);
 
     // 调用 Jfunc1 和 Jfunc2 函数，计算散射系数与辐射强度的关系
     float J1ks = Jfunc1(ks, m, lai);
@@ -691,29 +689,6 @@ void RT::optical(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<PixelIO> m
 
 }
 
-float RT::calculate_effective_lai_crown(Canopy &canopy, double sza)
-{
-    float lai_temp = canopy.lai;
-    double xza_temp = sza;
-    double G = canopy.Gleaf;
-    double std_temp = canopy.treeStand;
-    float canopyheight_temp = canopy.canopyHeight;
-    float b_temp = canopy.b;
-    float radi_vertical_temp = canopyheight_temp / 2.0;
-    float radi_horizontal_temp = canopyheight_temp / (2.0 * b_temp);
-
-    double tgthx = std::tan(xza_temp * PI / 180.0);
-    double cthetx = std::cos(xza_temp * PI / 180.0);
-    double areav = std::sqrt(radi_vertical_temp * radi_vertical_temp + std::pow(radi_horizontal_temp * tgthx, 2)) * PI * radi_vertical_temp;
-    double bv_in = std::exp(-lai_temp / (areav * std_temp) * G / cthetx);
-    double bv = std::exp(-areav * (1 - bv_in) * std_temp);
-    double uv = std::cos(xza_temp * PI / 180.0);
-    double clumping_index = -std::log(bv) * uv / (lai_temp * G);
-    float effective_lai = lai_temp * clumping_index;
-
-    return effective_lai;
-}
-
 void RT::netrad_shortwave(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<PixelIO> m_pPixelio) {
     // 获取动态变量和静态变量
     NetRad &netrad = m_pPixelio->m_pDynamicVariable->netrad;  // 短波净辐射
@@ -743,7 +718,9 @@ void RT::netrad_shortwave(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<P
     if (meteo.rin < 20 || sza > 75)
         return;
 
-    float lai = canopy.lai;  // 获取叶面积指数
+    // 直射和半球漫射使用各自的有效 LAI；观测方向值由图像模拟使用。
+    const EffectiveLai effectiveLai = RadiativeLai::calculateCached(
+        m_pPixelio->m_effectiveLaiCache, canopy, sza, m_pPixelio->m_angle.vza);
 
     // 遍历所有光谱波段
     for (int kband = 0; kband < N1; kband++) {
@@ -762,39 +739,46 @@ void RT::netrad_shortwave(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<P
         float wl = wl_[kband];  // 当前波段的波长
 
         // 如果LAI大于0，计算叶片和土壤的辐射
-        if (lai > 0) {
+        if (canopy.lai > 0) {
 
-            // // 将LAI转化为有效LAI计算净辐射，但是在方向亮温计算是否有影响存疑
-            // int type_temp = canopy.type;
-            // // 定义要检查的类型集合
-            // std::vector<int> canopy_types = {1, 2, 3, 4, 5, 6, 7};
-            // // 判断条件
-            // bool ind_crown = std::find(canopy_types.begin(), canopy_types.end(), type_temp) != canopy_types.end();
-            // if (ind_crown) {
-            //     // lai = calculate_effective_lai_crown(canopy, sza);
-            //     lai = calculate_effective_lai_crown(canopy, sza);
-            // }
+            // 太阳直射散射随太阳角变化，天空漫射采用一天内不变的半球有效 LAI。
+            float solarScatterLeaf = 0.0f;
+            float solarScatterSoil = 0.0f;
+            float hemisphereScatterLeaf = 0.0f;
+            float hemisphereScatterSoil = 0.0f;
+            diffuseScatter_VNIR(effectiveLai.solar, lrho, ltau, rs, sza,
+                                Esun, 0.0f, &solarScatterLeaf, &solarScatterSoil);
+            diffuseScatter_VNIR(effectiveLai.hemispherical, lrho, ltau, rs, 53.0f,
+                                0.0f, Esky, &hemisphereScatterLeaf, &hemisphereScatterSoil);
+            diffuse_leaf = solarScatterLeaf + hemisphereScatterLeaf;
+            diffuse_soil = solarScatterSoil + hemisphereScatterSoil;
 
-            // 计算叶片和土壤的散射辐射
-            diffuseScatter_VNIR(lai, lrho, ltau, rs, sza, Esun, Esky, &diffuse_leaf, &diffuse_soil);
+            const float projection = canopy.Gleaf > 0.0f ? canopy.Gleaf : GG;
+            const float cosine =
+                std::max(static_cast<float>(std::cos(sza * RD)), 0.01f);
+            const float sunGap = std::exp(-projection * effectiveLai.solar / cosine);
+            const float directNormal = Esun / cosine;
 
             // 更新净辐射值
             netrad.diffuseVrad_leaf += diffuse_leaf;  // 更新叶片散射辐射
             netrad.diffuseVrad_soil += diffuse_soil;  // 更新土壤散射辐射
-            netrad.directVrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - lrho - ltau);  // 更新叶片直接辐射
-            netrad.directVrad_soil += (Esun / cos(sza * PI / 180.0)) * (1 - rs);  // 更新土壤直接辐射
+            netrad.directVrad_leaf += directNormal * (1.0f - sunGap) * (1 - lrho - ltau);
+            netrad.directVrad_soil += directNormal * sunGap * (1 - rs);
             // netrad.directVrad_leaf += Esun * (1 - lrho - ltau);  // 更新叶片直接辐射
             // netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
             
             // 如果波长在可见光范围内（400-700nm），则计算辐射强度
             if (wl >= 400 && wl <= 700) {
-                netrad.directPrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - lrho - ltau) * wl * (1e-3) / (A * H * C);  // 叶片直接辐射强度
+                netrad.directPrad_leaf += directNormal * (1.0f - sunGap) *
+                    (1 - lrho - ltau) * wl * (1e-3) / (A * H * C);
                 netrad.diffusePrad_leaf += diffuse_leaf * wl * (1e-3) / (A * H * C);  // 叶片散射辐射强度
             }
         } else {
             // 如果LAI为0，只有土壤辐射
-            netrad.directVrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - rs);  // 更新叶片直接辐射
-            netrad.directVrad_soil += (Esky / cos(sza * PI / 180.0)) * (1 - rs);  // 更新土壤直接辐射
+            const float cosine =
+                std::max(static_cast<float>(std::cos(sza * RD)), 0.01f);
+            netrad.directVrad_soil += (Esun / cosine) * (1 - rs);
+            netrad.diffuseVrad_soil += Esky * (1 - rs);
             // netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
             // netrad.diffuseVrad_soil += Esky * (1 - rs);  // 更新土壤散射辐射
         }
@@ -835,28 +819,20 @@ void RT::netrad_longwave(std::shared_ptr<Defined> m_pDefined,std::shared_ptr<Pix
     float Tvs = thermal.Tleafsunlit; // 光照叶片温度
     float Tvh = thermal.Tleafshaded; // 阴影叶片温度
 
-    float lai = canopy.lai;
     // compo info
     float lrho = spectral.leafRefl_ir;
     float ltau = 0.0;
-    float sza = m_pPixelio->m_angle.sza;
+    // 长波是半球漫射过程，不应随太阳天顶角改变有效 LAI。
+    constexpr float diffuseZenith = 53.0f;
+    float lai = RadiativeLai::hemisphericalCached(
+        m_pPixelio->m_effectiveLaiCache, canopy);
     float rs = spectral.soilRefl_ir;
     float wl = -1;
 
     if(lai >0) {
-        // 将LAI转化为有效LAI计算净辐射，但是在方向亮温计算是否有影响存疑
-        int type_temp = canopy.type;
-        // 定义要检查的类型集合
-        // std::vector<int> canopy_types = {1, 2, 3, 4, 5, 6, 7};
-        std::vector<int> canopy_types = {1, 2, 3, 4, 5};
-        // 判断条件
-        bool ind_crown = std::find(canopy_types.begin(), canopy_types.end(), type_temp) != canopy_types.end();
-        if (ind_crown) {
-            lai = calculate_effective_lai_crown(canopy, sza);
-        }
-
         //如果叶面积指数大于0,调用 diffuseScatter_TIR 函数计算叶片和土壤的散射辐射,累加叶片和土壤的散射辐射到净辐射变量中。
-        diffuseScatter_TIR(lai, lrho, ltau, rs, sza, Esun, Esky, Tss, Tsh, Tvs, Tvh, &diffuse_leaf, &diffuse_soil);
+        diffuseScatter_TIR(lai, lrho, ltau, rs, diffuseZenith, Esun, Esky,
+                           Tss, Tsh, Tvs, Tvh, &diffuse_leaf, &diffuse_soil);
         netrad.diffuseTrad_leaf += diffuse_leaf;
         netrad.diffuseTrad_soil += diffuse_soil;
     }else
@@ -896,7 +872,8 @@ void RT::netrad_shortwave_urban(std::shared_ptr<Defined> m_pDefined, std::shared
     if (meteo.rin < 20 || sza > 75)
         return;
 
-    float lai = canopy.lai;  // 获取叶面积指数
+    const EffectiveLai effectiveLai = RadiativeLai::calculateCached(
+        m_pPixelio->m_effectiveLaiCache, canopy, sza, m_pPixelio->m_angle.vza);
 
     // 遍历所有光谱波段
     for (int kband = 0; kband < N1; kband++) {
@@ -915,39 +892,45 @@ void RT::netrad_shortwave_urban(std::shared_ptr<Defined> m_pDefined, std::shared
         float wl = wl_[kband];  // 当前波段的波长
 
         // 如果LAI大于0，计算叶片和土壤的辐射
-        if (lai > 0) {
+        if (canopy.lai > 0) {
 
-            // // 将LAI转化为有效LAI计算净辐射，但是在方向亮温计算是否有影响存疑
-            // int type_temp = canopy.type;
-            // // 定义要检查的类型集合
-            // std::vector<int> canopy_types = {1, 2, 3, 4, 5, 6, 7};
-            // // 判断条件
-            // bool ind_crown = std::find(canopy_types.begin(), canopy_types.end(), type_temp) != canopy_types.end();
-            // if (ind_crown) {
-            //     // lai = calculate_effective_lai_crown(canopy, sza);
-            //     lai = calculate_effective_lai_crown(canopy, sza);
-            // }
+            float solarScatterLeaf = 0.0f;
+            float solarScatterSoil = 0.0f;
+            float hemisphereScatterLeaf = 0.0f;
+            float hemisphereScatterSoil = 0.0f;
+            diffuseScatter_VNIR(effectiveLai.solar, lrho, ltau, rs, sza,
+                                Esun, 0.0f, &solarScatterLeaf, &solarScatterSoil);
+            diffuseScatter_VNIR(effectiveLai.hemispherical, lrho, ltau, rs, 53.0f,
+                                0.0f, Esky, &hemisphereScatterLeaf, &hemisphereScatterSoil);
+            diffuse_leaf = solarScatterLeaf + hemisphereScatterLeaf;
+            diffuse_soil = solarScatterSoil + hemisphereScatterSoil;
 
-            // 计算叶片和土壤的散射辐射
-            diffuseScatter_VNIR(lai, lrho, ltau, rs, sza, Esun, Esky, &diffuse_leaf, &diffuse_soil);
+            const float projection = canopy.Gleaf > 0.0f ? canopy.Gleaf : GG;
+            const float cosine =
+                std::max(static_cast<float>(std::cos(sza * RD)), 0.01f);
+            const float sunGap = std::exp(-projection * effectiveLai.solar / cosine);
+            const float directNormal = Esun / cosine;
 
             // 更新净辐射值
             netrad.diffuseVrad_leaf += diffuse_leaf;  // 更新叶片散射辐射
             netrad.diffuseVrad_soil += diffuse_soil;  // 更新土壤散射辐射
-            netrad.directVrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - lrho - ltau);  // 更新叶片直接辐射
-            netrad.directVrad_soil += (Esun / cos(sza * PI / 180.0)) * (1 - rs);  // 更新土壤直接辐射
+            netrad.directVrad_leaf += directNormal * (1.0f - sunGap) * (1 - lrho - ltau);
+            netrad.directVrad_soil += directNormal * sunGap * (1 - rs);
             // netrad.directVrad_leaf += Esun * (1 - lrho - ltau);  // 更新叶片直接辐射
             // netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
 
             // 如果波长在可见光范围内（400-700nm），则计算辐射强度
             if (wl >= 400 && wl <= 700) {
-                netrad.directPrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - lrho - ltau) * wl * (1e-3) / (A * H * C);  // 叶片直接辐射强度
+                netrad.directPrad_leaf += directNormal * (1.0f - sunGap) *
+                    (1 - lrho - ltau) * wl * (1e-3) / (A * H * C);
                 netrad.diffusePrad_leaf += diffuse_leaf * wl * (1e-3) / (A * H * C);  // 叶片散射辐射强度
             }
         } else {
             // 如果LAI为0，只有土壤辐射
-            netrad.directVrad_leaf += (Esun / cos(sza * PI / 180.0)) * (1 - rs);  // 更新叶片直接辐射
-            netrad.directVrad_soil += (Esky / cos(sza * PI / 180.0)) * (1 - rs);  // 更新土壤直接辐射
+            const float cosine =
+                std::max(static_cast<float>(std::cos(sza * RD)), 0.01f);
+            netrad.directVrad_soil += (Esun / cosine) * (1 - rs);
+            netrad.diffuseVrad_soil += Esky * (1 - rs);
             // netrad.directVrad_soil += Esun * (1 - rs);  // 更新土壤直接辐射
             // netrad.diffuseVrad_soil += Esky * (1 - rs);  // 更新土壤散射辐射
         }
@@ -988,28 +971,19 @@ void RT::netrad_longwave_urban(std::shared_ptr<Defined> m_pDefined,std::shared_p
     float Tvs = thermal.Tleafsunlit; // 光照叶片温度
     float Tvh = thermal.Tleafshaded; // 阴影叶片温度
 
-    float lai = canopy.lai;
     // compo info
     float lrho = spectral.leafRefl_ir;
     float ltau = 0.0;
-    float sza = m_pPixelio->m_angle.sza;
+    constexpr float diffuseZenith = 53.0f;
+    float lai = RadiativeLai::hemisphericalCached(
+        m_pPixelio->m_effectiveLaiCache, canopy);
     float rs = spectral.soilRefl_ir;
     float wl = -1;
 
     if(lai >0) {
-        // 将LAI转化为有效LAI计算净辐射，但是在方向亮温计算是否有影响存疑
-        int type_temp = canopy.type;
-        // 定义要检查的类型集合
-        // std::vector<int> canopy_types = {1, 2, 3, 4, 5, 6, 7};
-        std::vector<int> canopy_types = {1, 2, 3, 4, 5};
-        // 判断条件
-        bool ind_crown = std::find(canopy_types.begin(), canopy_types.end(), type_temp) != canopy_types.end();
-        if (ind_crown) {
-            lai = calculate_effective_lai_crown(canopy, sza);
-        }
-
         //如果叶面积指数大于0,调用 diffuseScatter_TIR 函数计算叶片和土壤的散射辐射,累加叶片和土壤的散射辐射到净辐射变量中。
-        diffuseScatter_TIR(lai, lrho, ltau, rs, sza, Esun, Esky, Tss, Tsh, Tvs, Tvh, &diffuse_leaf, &diffuse_soil);
+        diffuseScatter_TIR(lai, lrho, ltau, rs, diffuseZenith, Esun, Esky,
+                           Tss, Tsh, Tvs, Tvh, &diffuse_leaf, &diffuse_soil);
         netrad.diffuseTrad_leaf += diffuse_leaf;
         netrad.diffuseTrad_soil += diffuse_soil;
     }else
@@ -1666,7 +1640,8 @@ void RT::tirt_direct(Canopy canopy, Angle angle, float &fss,float &fsh,float &fc
 {
     float lai = canopy.lai;
     float vza = angle.vza;
-    float Psoil = gap_probability_hom_analytical(lai,vza);  // 土壤间隙率
+    // 观测方向间隙率由统一结构模型给出；固定 VZA 时该值保持不变。
+    float Psoil = RadiativeLai::directionalGap(canopy, vza);
     float Pleaf = 1-Psoil;  // 叶片概率
     float Psoil_sunlit = hotspot_layer(canopy,angle);  // 光照土壤概率
     float Pleaf_sunlit = hotspot_analytical(canopy,angle); // 光照射叶片概率
@@ -1687,8 +1662,10 @@ void RT::tirt_scatter(Canopy canopy, Angle angle,Spectral spectral, float &mss, 
     float refl_soil = spectral.soilRefl_ir;
     float refl_leaf = spectral.leafRefl_ir;
 
-    float bv = gap_probability_hom_analytical(lai, vza);
-    float M = gap_probability_hom_hemisphere_analytical(lai);
+    const float projection = canopy.Gleaf > 0.0f ? canopy.Gleaf : GG;
+    float bv = RadiativeLai::directionalGap(canopy, vza);
+    float M = std::exp(-0.825f * projection *
+                       RadiativeLai::hemispherical(canopy));
     float alpha[10] = {0.2855375, 0.2885375, 0.2964427, 0.3003953, 0.3083004, 0.3201581, 0.3399209, 0.3715415,
                        0.4189723, 1};
     int vza_index_bottom = floor(vza / 10);
@@ -1728,8 +1705,8 @@ void RT::tirt_direct_canopy(Canopy canopy, Angle angle, float &fss,float &fsh,fl
     float saa_temp = angle.saa;
     float raa_temp = vaa_temp - saa_temp;
 
-    float bv = gap_probability_crown_analytical(lai_temp, std_temp, radi_horizontal_temp, radi_vertical_temp, vza_temp);
-    float bi = gap_probability_crown_analytical(lai_temp, std_temp, radi_horizontal_temp, radi_vertical_temp, sza_temp);
+    float bv = RadiativeLai::directionalGap(canopy, vza_temp);
+    float bi = RadiativeLai::directionalGap(canopy, sza_temp);
 
     float Psoil = bv;
     float Pleaf = 1.0 - Psoil;
@@ -1739,8 +1716,9 @@ void RT::tirt_direct_canopy(Canopy canopy, Angle angle, float &fss,float &fsh,fl
     float ui = std::cos(sza_temp * RD);
 
     // 计算CIv和CIi
-    float CIv = -std::log(bv) * uv / (lai_temp * GG);
-    float CIs = -std::log(bi) * ui / (lai_temp * GG);
+    const float projection = canopy.Gleaf > 0.0f ? canopy.Gleaf : GG;
+    float CIv = -std::log(bv) * uv / (lai_temp * projection);
+    float CIs = -std::log(bi) * ui / (lai_temp * projection);
 
     // 计算土壤和叶片的可视比例
     float Psoil_sunlit = hotspot_layer_canopy(lai_temp, hspot_temp, vza_temp, sza_temp, raa_temp, CIs, CIv);
@@ -1798,8 +1776,8 @@ void RT::tirt_scatter_terrain(Canopy canopy, Angle angle, float &fss,float &fsh,
     float saa_temp = angle.saa;
     float raa_temp = vaa_temp - saa_temp;
 
-    float bv = gap_probability_crown_analytical(lai_temp, std_temp, radi_horizontal_temp, radi_vertical_temp, vza_temp);
-    float bi = gap_probability_crown_analytical(lai_temp, std_temp, radi_horizontal_temp, radi_vertical_temp, sza_temp);
+    float bv = RadiativeLai::directionalGap(canopy, vza_temp);
+    float bi = RadiativeLai::directionalGap(canopy, sza_temp);
 
     float Psoil = bv;
     float Pleaf = 1.0 - Psoil;
@@ -1809,8 +1787,9 @@ void RT::tirt_scatter_terrain(Canopy canopy, Angle angle, float &fss,float &fsh,
     float ui = std::cos(sza_temp * RD);
 
     // 计算CIv和CIi
-    float CIv = -std::log(bv) * uv / (lai_temp * GG);
-    float CIs = -std::log(bi) * ui / (lai_temp * GG);
+    const float projection = canopy.Gleaf > 0.0f ? canopy.Gleaf : GG;
+    float CIv = -std::log(bv) * uv / (lai_temp * projection);
+    float CIs = -std::log(bi) * ui / (lai_temp * projection);
 
     // 计算土壤和叶片的可视比例
     float Psoil_sunlit = hotspot_layer_canopy(lai_temp, hspot_temp, vza_temp, sza_temp, raa_temp, CIs, CIv);

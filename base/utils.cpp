@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <algorithm>
+
 
 /* Calculate the Sun Latitude according the Day Number calculated
    by function DayNumber                                          */
@@ -106,19 +108,20 @@ float SunPosition(float fLatitude, float fSunHeightAngle, float fSunLatitude)
 
 std::vector<std::string> Utils::splitt(std::string& s, std::string& deli)
 {
-	std::vector <std::string> ret;
-	int last = 0;
-	int index = s.find_first_of(deli, last);
-	int endx = s.find_last_not_of(deli);
-	std::string subpart;
-	while (index != int(std::string::npos))
-	{
-		subpart = s.substr(last, index - last);
-		if (subpart.size() != 0) ret.push_back(subpart);
-		last = index + 1;
-		index = s.find_first_of(deli, last);
+	std::vector<std::string> ret;
+	if (deli.empty()) {
+		if (!s.empty()) ret.push_back(s);
+		return ret;
 	}
-	if (endx - last > 0) ret.push_back(s.substr(last, endx));
+
+	std::string::size_type last = 0;
+	while (last < s.size()) {
+		const auto index = s.find_first_of(deli, last);
+		const auto end = index == std::string::npos ? s.size() : index;
+		if (end > last) ret.push_back(s.substr(last, end - last));
+		if (index == std::string::npos) break;
+		last = index + 1;
+	}
 	return ret;
 }
 
@@ -449,14 +452,23 @@ int Utils::saveImage(std::string outfilepath, std::vector<std::vector<float>> &c
 }
 
 int Utils::saveGeoImage(std::string outfilepath, std::vector<std::vector<float>> &c,
-					 int width, int height, int band, std::string proj, double trans[6]) {
+						 int width, int height, int band, std::string proj, double trans[6]) {
 
 	CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO");	// 支持中文路径
 	GDALAllRegister();  // 注册所有的驱动
 
 	// 获取驱动
 	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName("GTiff");
+	if (driver == nullptr || width <= 0 || height <= 0 || band <= 0 ||
+		static_cast<int>(c.size()) < band) {
+		std::cerr << "Unable to create GeoTIFF: invalid output dimensions or data.\n";
+		return 0;
+	}
 	GDALDataset *ods = driver->Create(outfilepath.c_str(), width, height, band, GDT_Float32, NULL);
+	if (ods == nullptr) {
+		std::cerr << "Unable to create GeoTIFF: " << outfilepath << std::endl;
+		return 0;
+	}
 
 	// 设置投影信息
 	if (!proj.empty()) {
@@ -473,6 +485,11 @@ int Utils::saveGeoImage(std::string outfilepath, std::vector<std::vector<float>>
 
 	// 写入数据
 	for (int kband = 0; kband < band; kband++) {
+		if (static_cast<int>(c[kband].size()) < width * height) {
+			GDALClose(ods);
+			std::cerr << "Unable to write GeoTIFF: insufficient band data.\n";
+			return 0;
+		}
 		GDALRasterBand *oBand = ods->GetRasterBand(kband + 1);
 		CPLErr result = oBand->RasterIO(GF_Write, 0, 0, width, height, c[kband].data(), width, height, GDT_Float32, 0, 0);
 	}
@@ -680,7 +697,14 @@ bool Utils::readHdf5image(std::string infilename, std::string objname, std::vect
     // 打开HDF5文件
     hid_t file_id;
     herr_t status;
-    file_id = H5Fopen(infilename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+    // Input datasets must also work when the source directory is read-only.
+    file_id = H5Fopen(infilename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    if (file_id < 0) {
+        cc.clear();
+        width = height = nband = 0;
+        std::cerr << "Unable to open HDF5 file: " << infilename << std::endl;
+        return false;
+    }
 
     // 创建数据集中的数据本身
     hid_t dataset_id;    // 数据集本身的id
@@ -688,10 +712,26 @@ bool Utils::readHdf5image(std::string infilename, std::string objname, std::vect
     //                 const char *name, 数据集名
     //                    数据集访问性质)
     dataset_id = H5Dopen(file_id, objname.c_str(), H5P_DEFAULT);
+    if (dataset_id < 0) {
+        H5Fclose(file_id);
+        cc.clear();
+        width = height = nband = 0;
+        std::cerr << "Unable to open HDF5 dataset: " << objname << std::endl;
+        return false;
+    }
 
 
     hid_t dspace = H5Dget_space(dataset_id);/** 获取数据集大小信息 */
-    hsize_t dims[2];
+    if (dspace < 0 || H5Sget_simple_extent_ndims(dspace) != 3) {
+        if (dspace >= 0) H5Sclose(dspace);
+        H5Dclose(dataset_id);
+        H5Fclose(file_id);
+        cc.clear();
+        width = height = nband = 0;
+        std::cerr << "HDF5 dataset must have three dimensions: " << objname << std::endl;
+        return false;
+    }
+    hsize_t dims[3];
     H5Sget_simple_extent_dims(dspace, dims, NULL);
     nband = dims[0];
     height= dims[1];
@@ -729,7 +769,7 @@ bool Utils::readHdf5image(std::string infilename, std::string objname, std::vect
 
     // 关闭dataset相关对象
     status = H5Dclose(dataset_id);
-//       status = H5Sclose(dataspace_id);
+    status = H5Sclose(dspace);
 
     // 关闭文件对象
     status = H5Fclose(file_id);
@@ -741,9 +781,19 @@ bool Utils::readHdf5image(std::string infilename, std::string objname, std::vect
 
 bool Utils::writeHdf5image(std::string outfilepath, std::string objname, std::vector<std::vector<float>> &cc, int width, int height, int nband) {
 
+    if (width <= 0 || height <= 0 || nband <= 0 ||
+        static_cast<int>(cc.size()) < nband) {
+        std::cerr << "Unable to write HDF5 image: invalid dimensions or data.\n";
+        return false;
+    }
+
     const int data_rank =3;
     hid_t file_id;
     file_id = H5Fcreate(outfilepath.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    if (file_id < 0) {
+        std::cerr << "Unable to create HDF5 file: " << outfilepath << std::endl;
+        return false;
+    }
 
 
     hsize_t dims[3];
@@ -760,29 +810,48 @@ bool Utils::writeHdf5image(std::string outfilepath, std::string objname, std::ve
     //H5Pset_deflate(plist,6);
     dataset_id = H5Dcreate2(file_id, objname.c_str(), H5T_IEEE_F32BE, dataspace_id,
                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (dataset_id < 0) {
+        H5Sclose(dataspace_id);
+        H5Fclose(file_id);
+        std::cerr << "Unable to create HDF5 dataset: " << objname << std::endl;
+        return false;
+    }
 
 
    // hid_t filespace_id = H5Dget_space(dataset_id);
 
-    int totalsize = 0;
-//    newarr = new float(vec.size());
-    for(int i =0;i<cc.size();i++)
-    {
-        totalsize+=cc[i].size();
-    }
+    const int planeSize = width * height;
+    const int totalsize = planeSize * nband;
    float *data = new float[totalsize];
    float * walkarr = data;
 
-    for(int i =0;i<cc.size();i++)
+    for(int i =0;i<nband;i++)
     {
-        std::copy(cc[i].begin(),cc[i].end(),walkarr);
-        walkarr += cc[i].size();
+        if (static_cast<int>(cc[i].size()) < width * height) {
+            H5Dclose(dataset_id);
+            H5Sclose(dataspace_id);
+            H5Fclose(file_id);
+            delete [] data;
+            std::cerr << "Unable to write HDF5 image: insufficient band data.\n";
+            return false;
+        }
+        std::copy_n(cc[i].begin(), planeSize, walkarr);
+        walkarr += planeSize;
     }
 
 
     herr_t status;
     status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT_g, H5S_ALL, H5S_ALL,
                       H5P_DEFAULT, data);
+
+    if (status < 0) {
+        H5Sclose(dataspace_id);
+        H5Dclose(dataset_id);
+        H5Fclose(file_id);
+        delete [] data;
+        std::cerr << "Unable to write HDF5 dataset: " << objname << std::endl;
+        return false;
+    }
 
     status = H5Sclose(dataspace_id);
     status = H5Dclose(dataset_id);
@@ -806,7 +875,14 @@ bool Utils::readHdf5image1(std::string infilename, std::string objname, std::vec
     // 打开HDF5文件
     hid_t file_id;
     herr_t status;
-    file_id = H5Fopen(infilename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+    // Input datasets must also work when the source directory is read-only.
+    file_id = H5Fopen(infilename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    if (file_id < 0) {
+        c.clear();
+        width = height = nband = 0;
+        std::cerr << "Unable to open HDF5 file: " << infilename << std::endl;
+        return false;
+    }
 
     // 创建数据集中的数据本身
     hid_t dataset_id;    // 数据集本身的id
@@ -814,10 +890,26 @@ bool Utils::readHdf5image1(std::string infilename, std::string objname, std::vec
     //                 const char *name, 数据集名
     //                    数据集访问性质)
     dataset_id = H5Dopen(file_id, objname.c_str(), H5P_DEFAULT);
+    if (dataset_id < 0) {
+        H5Fclose(file_id);
+        c.clear();
+        width = height = nband = 0;
+        std::cerr << "Unable to open HDF5 dataset: " << objname << std::endl;
+        return false;
+    }
 
 
     hid_t dspace = H5Dget_space(dataset_id);/** 获取数据集大小信息 */
-    hsize_t dims[2];
+    if (dspace < 0 || H5Sget_simple_extent_ndims(dspace) != 2) {
+        if (dspace >= 0) H5Sclose(dspace);
+        H5Dclose(dataset_id);
+        H5Fclose(file_id);
+        c.clear();
+        width = height = nband = 0;
+        std::cerr << "HDF5 dataset must have two dimensions: " << objname << std::endl;
+        return false;
+    }
+    hsize_t dims[3];
     H5Sget_simple_extent_dims(dspace, dims, NULL);
     height= dims[0];
     width = dims[1];
@@ -851,7 +943,7 @@ bool Utils::readHdf5image1(std::string infilename, std::string objname, std::vec
 
     // 关闭dataset相关对象
     status = H5Dclose(dataset_id);
-//       status = H5Sclose(dataspace_id);
+    status = H5Sclose(dspace);
 
     // 关闭文件对象
     status = H5Fclose(file_id);
@@ -863,11 +955,20 @@ bool Utils::readHdf5image1(std::string infilename, std::string objname, std::vec
 
 bool Utils::writeHdf5image1(std::string outfilepath, std::string objname, std::vector<float> &c, int width, int height) {
 
+    if (width <= 0 || height <= 0 || static_cast<int>(c.size()) < width * height) {
+        std::cerr << "Unable to write HDF5 image: invalid dimensions or data.\n";
+        return false;
+    }
+
     const int data_rank =2;
     hid_t file_id;
     file_id = H5Fcreate(outfilepath.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    if (file_id < 0) {
+        std::cerr << "Unable to create HDF5 file: " << outfilepath << std::endl;
+        return false;
+    }
 
-    hsize_t dims[2];
+    hsize_t dims[3];
     dims[0] = height;
     dims[1] = width;
     hid_t dataspace_id, dataset_id;
@@ -875,12 +976,26 @@ bool Utils::writeHdf5image1(std::string outfilepath, std::string objname, std::v
    // H5Tcreate(file_id,)
     dataset_id = H5Dcreate2(file_id, objname.c_str(), H5T_IEEE_F32BE, dataspace_id,
                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (dataset_id < 0) {
+        H5Sclose(dataspace_id);
+        H5Fclose(file_id);
+        std::cerr << "Unable to create HDF5 dataset: " << objname << std::endl;
+        return false;
+    }
 //    dataset_id = H5Dcreate1(file_id, objname.c_str(), H5T_IEEE_F32BE, dataspace_id,
 //                            H5P_DEFAULT);
     float *bandData = c.data();
     herr_t status;
     status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT_g, H5S_ALL, H5S_ALL,
                       H5P_DEFAULT, bandData);
+
+    if (status < 0) {
+        H5Sclose(dataspace_id);
+        H5Dclose(dataset_id);
+        H5Fclose(file_id);
+        std::cerr << "Unable to write HDF5 dataset: " << objname << std::endl;
+        return false;
+    }
 
     status = H5Sclose(dataspace_id);
     status = H5Dclose(dataset_id);

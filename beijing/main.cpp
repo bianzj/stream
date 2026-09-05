@@ -20,7 +20,7 @@
 
 int main(int argc,char* argv[])
 {
-    const std::string defaultInput = "/home/hero/data/stream/input-25km-global-local.txt";
+    const std::string defaultInput = "/home/hero/data/stream/input-100m-beijing-local.txt";
     const std::string infilepath = argc > 1 ? argv[1] : defaultInput;
     if (argc > 2) {
         setenv("STREAM_OUTPUT_DIR", argv[2], 1);
@@ -54,9 +54,3 @@ int main(int argc,char* argv[])
 return 0;
 
 }
-
-
-
-
-
-

@@ -11,6 +11,7 @@
 #include "leafopt.h"
 #include "scifuns.h"
 #include "soilopt.h"
+#include "radiative_lai.h"
 
 
 class RT {
@@ -19,8 +20,6 @@ public:
 
     // --- 核心光谱与光学计算 ---
     void optical(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<PixelIO> m_pPixelio);
-    float calculate_effective_lai_crown(Canopy& canopy, double sza);
-
     // --- 净辐射计算 (植被/森林) ---
     void netrad_shortwave(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<PixelIO> m_pPixelio);
     void netrad_longwave(std::shared_ptr<Defined> m_pDefined, std::shared_ptr<PixelIO> m_pPixelio);

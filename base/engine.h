@@ -45,7 +45,7 @@ public:
     void subrun(int startWidth,int endWidth, int startHeight, int endHeight);
     void sythrun();
 
-    void observe(int knode);
+    void observe(int knode, bool outputOptical = false);
     //void runpixel(std::shared_ptr<PixelIO> pixelio);
 
 

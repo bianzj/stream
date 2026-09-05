@@ -13,6 +13,7 @@
 #include "soilopt.h"
 #include "leafopt.h"
 #include "geometry.h"
+#include "balance.h"
 
 
 class Model
@@ -66,6 +67,7 @@ public:
     Aerodynamic m_aero;
     BioChemical m_bio;
     Geometry m_geometry;
+    WaterCarbonBalance m_balance;
 
 
 

@@ -1,4 +1,7 @@
 #include <iostream>
+#include <cstdlib>
+#include <cerrno>
+#include <cmath>
 
 #include "engine.h"
 
@@ -10,6 +13,17 @@ void Engine::initProject(std::string infilepath) {
     //m_modelio->inputMeta(infilepath);
     //m_modelio->inputDefinedData();
     m_fileio->readMeta(infilepath);
+
+    // The balance is deliberately opt-in.  All parameters are read from
+    // FileIO so the legacy metadata format remains unchanged.
+    m_model->m_balance.configure(
+        m_fileio->m_balanceEnabled,
+        m_fileio->m_balanceDtSeconds,
+        m_fileio->m_balanceRootDepthMeters,
+        m_fileio->m_balanceSpecificLeafArea,
+        m_fileio->m_balanceLeafCarbonFraction,
+        m_fileio->m_balanceLeafAllocation,
+        m_fileio->m_balanceLeafTurnover);
 
 
 }
@@ -67,6 +81,8 @@ int runpixel(std::shared_ptr<Model> model, std::shared_ptr<Defined> defined, std
     auto & m_aero = model->m_aero;
     auto & m_geometry = model->m_geometry;
 
+    model->m_balance.beginDay(pixelio);
+
     for(int knode = 0;knode<pixelio->n_node;knode++) {
 
         pixelio->k_node = knode;
@@ -108,6 +124,10 @@ int runpixel(std::shared_ptr<Model> model, std::shared_ptr<Defined> defined, std
             break;
         }
 
+        // Update pools only after the energy balance has produced the final
+        // latent heat and photosynthesis fluxes for this forcing node.
+        model->m_balance.update(pixelio);
+
         m_rt.nadirTir(pixelio);  //调用 nadirTir 计算天顶方向的热红外辐射
         model->flash(pixelio);
     }
@@ -140,8 +160,14 @@ int subrunpixel(std::shared_ptr<Model> model, std::shared_ptr<Defined> defined,s
     auto & m_aero = model->m_aero;
     auto & m_geometry = model->m_geometry;
 
+    model->m_balance.beginDay(pixelio);
+
     pixelio->m_pStaticVariable->spectal = defined->m_spectral;
-    //m_rt.optical(defined, pixelio);
+    // 指定时刻图像模拟需要当前植被类型对应的光学参数；
+    // 常规时间序列运行保持原有光谱输入和输出行为。
+    if (thenode >= 0) {
+        m_rt.optical(defined, pixelio);
+    }
 
     int startNode,endNode;
     if(thenode >= 0) {startNode= thenode; endNode = thenode+1;}
@@ -166,6 +192,7 @@ int subrunpixel(std::shared_ptr<Model> model, std::shared_ptr<Defined> defined,s
             if (iscloused) break;
 
         }
+        model->m_balance.update(pixelio);
         m_rt.nadirTir(pixelio);
         model->flash(pixelio);
 
@@ -175,7 +202,7 @@ int subrunpixel(std::shared_ptr<Model> model, std::shared_ptr<Defined> defined,s
 }
 
 
-void Engine::observe(int knode) {
+void Engine::observe(int knode, bool outputOptical) {
     std::cout<<"begin observing"<<std::endl;
     //---------------------------------------
     //----- Extra time ???
@@ -209,6 +236,22 @@ void Engine::observe(int knode) {
 
     m_fileio->m_vDBT.clear();
 
+    m_fileio->m_vDirectVradLeaf.clear();
+    m_fileio->m_vDiffuseVradLeaf.clear();
+    m_fileio->m_vDirectVradSoil.clear();
+    m_fileio->m_vDiffuseVradSoil.clear();
+    m_fileio->m_vDirectPradLeaf.clear();
+    m_fileio->m_vDiffusePradLeaf.clear();
+
+    m_fileio->m_vDailyEt.clear();
+    m_fileio->m_vDailyPrecipitation.clear();
+    m_fileio->m_vDailyRunoff.clear();
+    m_fileio->m_vDailyGpp.clear();
+    m_fileio->m_vDailyPlantRespiration.clear();
+    m_fileio->m_vDailyNpp.clear();
+    m_fileio->m_vSoilWater.clear();
+    m_fileio->m_vLaiState.clear();
+
     // 初始化温度向量，大小为工作区的宽度 * 高度
     for(int k=startNode;k<endNode;k++) {
         std::vector<float> temptsk = std::vector<float>(width * height, 0);
@@ -236,10 +279,31 @@ void Engine::observe(int knode) {
         m_fileio->m_vTstreetsunlit.push_back(temptstreetsunlit);
         m_fileio->m_vTstreetshaded.push_back(temptstreetshaded);
 
+        if (outputOptical) {
+            m_fileio->m_vDirectVradLeaf.emplace_back(width * height, 0.0f);
+            m_fileio->m_vDiffuseVradLeaf.emplace_back(width * height, 0.0f);
+            m_fileio->m_vDirectVradSoil.emplace_back(width * height, 0.0f);
+            m_fileio->m_vDiffuseVradSoil.emplace_back(width * height, 0.0f);
+            m_fileio->m_vDirectPradLeaf.emplace_back(width * height, 0.0f);
+            m_fileio->m_vDiffusePradLeaf.emplace_back(width * height, 0.0f);
+        }
+
     }
 
     std::vector<float> tempdbt = std::vector<float>(width * height, 0);
     m_fileio->m_vDBT.push_back(tempdbt);
+
+    if (m_fileio->m_balanceEnabled) {
+        const std::size_t imageSize = static_cast<std::size_t>(width) * height;
+        m_fileio->m_vDailyEt.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vDailyPrecipitation.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vDailyRunoff.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vDailyGpp.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vDailyPlantRespiration.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vDailyNpp.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vSoilWater.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vLaiState.emplace_back(imageSize, 0.0f);
+    }
 
     // 遍历所有的 PixelIO 对象
     for (int i = 0; i < m_modelio->m_vPixelio.size(); i++) {
@@ -267,15 +331,46 @@ void Engine::observe(int knode) {
             m_fileio->m_vTwallshaded[kk][pos] = m_modelio->m_vPixelio[i]->m_vTwh[k];
             m_fileio->m_vTstreetsunlit[kk][pos] = m_modelio->m_vPixelio[i]->m_vTts[k];
             m_fileio->m_vTstreetshaded[kk][pos] = m_modelio->m_vPixelio[i]->m_vTth[k];
+
+            if (outputOptical) {
+                const NetRad &netrad = m_modelio->m_vPixelio[i]->m_pDynamicVariable->netrad;
+                m_fileio->m_vDirectVradLeaf[kk][pos] = netrad.directVrad_leaf;
+                m_fileio->m_vDiffuseVradLeaf[kk][pos] = netrad.diffuseVrad_leaf;
+                m_fileio->m_vDirectVradSoil[kk][pos] = netrad.directVrad_soil;
+                m_fileio->m_vDiffuseVradSoil[kk][pos] = netrad.diffuseVrad_soil;
+                m_fileio->m_vDirectPradLeaf[kk][pos] = netrad.directPrad_leaf;
+                m_fileio->m_vDiffusePradLeaf[kk][pos] = netrad.diffusePrad_leaf;
+            }
         }
 
         m_fileio->m_vDBT[0][pos] = m_modelio->m_vPixelio[i]->m_DBT;
+
+        if (m_fileio->m_balanceEnabled) {
+            const BalanceState &balance =
+                m_modelio->m_vPixelio[i]->m_pDynamicVariable->balance;
+            m_fileio->m_vDailyEt[0][pos] = balance.dailyEtMm;
+            m_fileio->m_vDailyPrecipitation[0][pos] = balance.dailyPrecipitationMm;
+            m_fileio->m_vDailyRunoff[0][pos] = balance.dailyRunoffMm;
+            m_fileio->m_vDailyGpp[0][pos] = balance.dailyGrossAssimilationGc;
+            m_fileio->m_vDailyPlantRespiration[0][pos] = balance.dailyPlantRespirationGc;
+            m_fileio->m_vDailyNpp[0][pos] = balance.dailyNetAssimilationGc;
+            m_fileio->m_vSoilWater[0][pos] = balance.soilWaterMm;
+            m_fileio->m_vLaiState[0][pos] = m_modelio->m_vPixelio[i]->m_pInputset->canopy.lai;
+        }
     }
 
 
     // 调用 saveSkt 函数保存温度数据，并输出完成消息。
     m_fileio->saveSkt(m_modelio->m_pDefined->m_year, m_modelio->m_pDefined->m_doy,knode);
-    m_fileio->saveDBT(m_modelio->m_pDefined->m_year, m_modelio->m_pDefined->m_doy,0);
+    if (m_fileio->m_satmode != 0) {
+        m_fileio->saveDBT(m_modelio->m_pDefined->m_year, m_modelio->m_pDefined->m_doy,0);
+    }
+    if (outputOptical) {
+        m_fileio->saveOptical(m_modelio->m_pDefined->m_year, m_modelio->m_pDefined->m_doy,knode);
+    }
+    if (m_fileio->m_balanceEnabled) {
+        m_fileio->saveBalance(m_modelio->m_pDefined->m_year, m_modelio->m_pDefined->m_doy);
+    }
     std::cout<<"finish observing"<<std::endl;
 }
 
@@ -316,7 +411,6 @@ void Engine::run()
                 for (int i = 0; i < m_modelio->m_vPixelio.size(); i++) {
                     std::shared_ptr<Defined> definedio = m_modelio->m_pDefined;
                     std::shared_ptr<PixelIO> pixelio = m_modelio->m_vPixelio[i];
-                    runpixel(m_model,definedio,pixelio,m_fileio);
                     pool.async(runpixel, m_model, definedio, pixelio, m_fileio);
                 }
             }
@@ -339,10 +433,6 @@ void Engine::subrun(int startWidth, int endWidth, int startHeight, int endHeight
     int width = m_fileio->m_width;
     int height = m_fileio->m_height;
     int num = m_modelio->m_vPixelio.size();
-    thread_pool pool(N_THREAD);
-
-
-
     upload(theyear,thedoy);
 
     std::shared_ptr<Defined> definedio = m_modelio->m_pDefined;
@@ -350,13 +440,16 @@ void Engine::subrun(int startWidth, int endWidth, int startHeight, int endHeight
     definedio->m_doy = thedoy;
 
     std::cout<<"begin simulation ..."<<std::endl;
-    for(int i=0;i< m_modelio->m_vPixelio.size();i++) {
+    {
+        thread_pool pool(N_THREAD);
+        for(int i=0;i< m_modelio->m_vPixelio.size();i++) {
+            std::shared_ptr<PixelIO> &pixelio = m_modelio->m_vPixelio[i];
+            pool.async(subrunpixel, m_model, definedio, pixelio, knode);
+        }
+    } // 等待所有像元完成后再汇总和输出
 
-        std::shared_ptr<PixelIO> &pixelio = m_modelio->m_vPixelio[i];
-        pool.async(subrunpixel, m_model, definedio, pixelio, knode);
-       // int pos = m_modelio->m_vPixelio[i]->k_pos;
-     //   m_fileio->m_vSkt[pos] =m_modelio->m_vPixelio[i]->m_sk t;
-
+    if (knode >= 0) {
+        observe(knode, true);
     }
     std::cout<<"finish simulation"<<std::endl;
 
@@ -371,7 +464,7 @@ void Engine::subrun(int startWidth, int endWidth, int startHeight, int endHeight
 
     initVariable(startWidth,endWidth,startHeight,endHeight);
 
-    for(int kyear = m_fileio->startYear;kyear < m_fileio->endYear;kyear) {
+    for(int kyear = m_fileio->startYear;kyear <= m_fileio->endYear;kyear++) {
 
         int startDoy = 1;
         int endDoy = 366;
@@ -379,27 +472,24 @@ void Engine::subrun(int startWidth, int endWidth, int startHeight, int endHeight
         if(kyear == m_fileio->startYear) startDoy = m_fileio->startDoy;
         if(kyear == m_fileio->endYear) endDoy = m_fileio->endDoy;
 
-        for(int kdoy = startDoy;kdoy<endDoy;kdoy++) {
+        for(int kdoy = startDoy;kdoy<=endDoy;kdoy++) {
             int width = m_fileio->m_width;
             int height = m_fileio->m_height;
             long num = m_modelio->m_vPixelio.size();
-            thread_pool pool(N_THREAD);
-
-
             upload(kyear, kdoy);
 
             std::shared_ptr<Defined> definedio = m_modelio->m_pDefined;
             definedio->m_year = kyear;
             definedio->m_doy = kdoy;
 
-            for (int i = 0; i < m_modelio->m_vPixelio.size(); i++) {
-
-                std::shared_ptr<PixelIO> &pixelio = m_modelio->m_vPixelio[i];
-                pool.async(subrunpixel, m_model, definedio, pixelio, -1);
-                // int pos = m_modelio->m_vPixelio[i]->k_pos;
-                //   m_fileio->m_vSkt[pos] =m_modelio->m_vPixelio[i]->m_sk t;
-
+            {
+                thread_pool pool(N_THREAD);
+                for (int i = 0; i < m_modelio->m_vPixelio.size(); i++) {
+                    std::shared_ptr<PixelIO> &pixelio = m_modelio->m_vPixelio[i];
+                    pool.async(subrunpixel, m_model, definedio, pixelio, -1);
+                }
             }
+            observe(-1);
         }
 
     }

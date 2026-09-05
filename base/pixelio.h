@@ -2,6 +2,7 @@
 #include <memory>
 #include "structs.h"
 #include "defined.h"
+#include "radiative_lai.h"
 
 /*
 
@@ -39,6 +40,7 @@ public:
     std::shared_ptr<StaticVariable> m_pStaticVariable;
    // void inputSoilRefl();
     Angle m_angle;
+    EffectiveLaiCache m_effectiveLaiCache;
 
     int k_width;
     int k_height;

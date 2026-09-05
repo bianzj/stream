@@ -1,0 +1,4 @@
+# year,doy,hour,variable,value,uncertainty,row,col,window_hours,quality
+2025,363,0,LAI,1.20,0.30,10,20,96,1
+2025,363,6,SOIL_MOISTURE,0.24,0.05,10,20,24,1
+2025,364,12,LAI,1.25,0.30,10,20,96,1

@@ -21,6 +21,10 @@ add_executable(stream
         base/engine.cpp
         base/evapo.cpp
         base/evapo.h
+        base/enkf.cpp
+        base/enkf.h
+        base/balance.cpp
+        base/balance.h
         base/fileio.cpp
         base/fileio.h
         base/leafopt.h
@@ -29,6 +33,10 @@ add_executable(stream
         base/pixelio.h
         base/rt.cpp
         base/rt.h
+        base/radiative_lai.cpp
+        base/radiative_lai.h
+        base/image_simulator.cpp
+        base/image_simulator.h
         base/scifuns.h
         base/geometry.h
         base/structs.h

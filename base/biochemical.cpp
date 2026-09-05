@@ -10,6 +10,16 @@ void biochemical_Farquhar(Canopy canopy, LeafBio leafbio, SoilSet soilset, Therm
     int type = canopy.type;
     float fPAR = 1;
 
+    // These fluxes used to be discarded after stomatal resistance was
+    // calculated.  Keep the leaf-scale values so the optional carbon balance
+    // can integrate them over the forcing time step.
+    biostate.grossAssimilationSunlit = 0.0f;
+    biostate.grossAssimilationShaded = 0.0f;
+    biostate.netAssimilationSunlit = 0.0f;
+    biostate.netAssimilationShaded = 0.0f;
+    biostate.respirationSunlit = 0.0f;
+    biostate.respirationShaded = 0.0f;
+
     if(type == 16)
     {
         //----------------------
@@ -38,7 +48,7 @@ void biochemical_Farquhar(Canopy canopy, LeafBio leafbio, SoilSet soilset, Therm
             if (issunlit == 0)
                 Tc = thermal.Tleafshaded; // 遮荫叶片温度
             else
-                Tc = thermal.Tleafshaded; // 阳光直射叶片温度
+                Tc = thermal.Tleafsunlit; // 阳光直射叶片温度
             // 叶片表面的 CO2 浓度
             Cs = biostate.cs;
             // 叶片表面的 H2O 浓度
@@ -186,6 +196,15 @@ void biochemical_Farquhar(Canopy canopy, LeafBio leafbio, SoilSet soilset, Therm
             if(isnan(rcw)) rcw = 0.625*1E6;
 
             // save back
+            if (issunlit == 0) {
+                biostate.grossAssimilationShaded = Ag;
+                biostate.netAssimilationShaded = A;
+                biostate.respirationShaded = Rd;
+            } else {
+                biostate.grossAssimilationSunlit = Ag;
+                biostate.netAssimilationSunlit = A;
+                biostate.respirationSunlit = Rd;
+            }
             if(issunlit==0) biostate.rsshaded = rcw;
             else biostate.rssunlit= rcw;
             if(!isnan(Ci)) biostate.ci = float(Ci/ppm2bar);
@@ -256,10 +275,10 @@ void biochemical_M12(Canopy canopy, LeafBio leafbio, SoilSet soilset, Thermal th
 
             if(kt ==0 )
             {
-                Tc = Tsunlit;
+                Tc = Tshaded;
             }else
             {
-                Tc = Tshaded;
+                Tc = Tsunlit;
             }
 
             RH = biostate.es / SCI::es_fun(Tc-273.15);

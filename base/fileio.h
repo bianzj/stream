@@ -3,8 +3,33 @@
 #include "structs.h"
 #include "defined.h"
 #include "modelio.h"
+#include "enkf.h"
 #include <iomanip>
 #include <filesystem>
+
+// A single observation record is deliberately kept independent of the model
+// state.  This lets observations with different time scales be loaded now and
+// assimilated later without changing the current simulation results.
+struct AssimilationObservation
+{
+    int year = 0;
+    int doy = 0;
+    double hour = 0.0;
+    std::string variable;
+    float value = 0.0f;
+    float uncertainty = 1.0f;
+    int row = -1;
+    int col = -1;
+    double windowHours = 0.0;
+    int quality = 1;
+};
+
+enum class StateSource
+{
+    Observation,
+    Model,
+    Assimilation
+};
 
 //----------------------------------
 //--- data and run
@@ -13,15 +38,25 @@
 class FileIO
 {
 public:
-    FileIO(){};
+    FileIO() : m_satmode(0), startYear(0), endYear(0), startDoy(0), endDoy(0) {};
     void readMeta(std::string infilepath);
     void readGeodata();
     void readExtradata();
     int readMeteodata(int year, int doy);
     int readSatdata(int year, int doy);
     void readVegdata(int year, int doy);
+    bool readPrecipitationData(int year, int doy);
+    bool readAssimilationData(const std::string& filepath);
+    void assimilatePixelState(int pixelIndex,
+                              float laiObservation,
+                              float soilMoistureObservation,
+                              float laiForecast,
+                              float soilMoistureForecast,
+                              float& laiAnalysis,
+                              float& soilMoistureAnalysis);
     void saveSkt(int year, int doy, int knode);
     void saveDBT(int year, int doy, int knode);
+    void saveOptical(int year, int doy, int knode);
     void readDefined(std::shared_ptr<ModelIO> &modelio);
     void varupdate();
     void varoutput();
@@ -130,6 +165,30 @@ public:
     std::string m_satName;
     std::string m_nadirobliq;
 
+    // Optional water/carbon balance configuration.  It is disabled by
+    // default so existing runs keep their previous behaviour.
+    bool m_balanceEnabled = false;
+    float m_balanceDtSeconds = 3600.0f;
+    float m_balanceRootDepthMeters = 1.0f;
+    float m_balanceSpecificLeafArea = 0.02f;
+    float m_balanceLeafCarbonFraction = 0.45f;
+    float m_balanceLeafAllocation = 0.40f;
+    float m_balanceLeafTurnover = 0.01f;
+    std::string m_precipitationFile;
+
+    // Observation = measured/ERA5, Model = previous model state,
+    // Assimilation = EnKF analysis.
+    StateSource m_laiSource = StateSource::Observation;
+    StateSource m_soilMoistureSource = StateSource::Observation;
+
+    // Assimilation is read-only scaffolding for now.  No model state is
+    // changed until a future assimilation method explicitly consumes it.
+    bool m_assimilationEnabled = false;
+    bool m_assimilationReadOnly = true;
+    std::string m_assimilationFile;
+    std::vector<AssimilationObservation> m_assimilationObservations;
+    EnsembleKalmanFilter m_enkf;
+
     // property image
     std::vector<float> m_vLat;
     std::vector<float> m_vLon;
@@ -148,6 +207,10 @@ public:
     std::vector<std::vector<float>> m_vU;   // wind speed
     std::vector<std::vector<float>> m_vRin;
     std::vector<std::vector<float>> m_vRli;
+    std::vector<std::vector<float>> m_vPrecipitation;
+    int m_precipitationWidth = 0;
+    int m_precipitationHeight = 0;
+    bool m_precipitationAvailable = false;
 
     // satllite tif
     std::vector<float> m_vza;
@@ -166,7 +229,7 @@ public:
     std::vector<std::vector<float>> m_vCa;
     std::vector<std::vector<float>> m_vOa;
     std::vector<std::vector<float>> m_vTa;
-    std::vector<uint32_t> m_vPos;
+    std::vector<int32_t> m_vPos;
     std::vector<float> m_vT;
 
 
@@ -185,6 +248,26 @@ public:
     std::vector<std::vector<float>> m_vTstreetshaded;
 
     std::vector<std::vector<float>> m_vDBT;
+
+    // integrated VNIR and leaf photosynthetic photon radiation outputs
+    std::vector<std::vector<float>> m_vDirectVradLeaf;
+    std::vector<std::vector<float>> m_vDiffuseVradLeaf;
+    std::vector<std::vector<float>> m_vDirectVradSoil;
+    std::vector<std::vector<float>> m_vDiffuseVradSoil;
+    std::vector<std::vector<float>> m_vDirectPradLeaf;
+    std::vector<std::vector<float>> m_vDiffusePradLeaf;
+
+    // Daily water/carbon balance products, one band per output image.
+    std::vector<std::vector<float>> m_vDailyEt;
+    std::vector<std::vector<float>> m_vDailyPrecipitation;
+    std::vector<std::vector<float>> m_vDailyRunoff;
+    std::vector<std::vector<float>> m_vDailyGpp;
+    std::vector<std::vector<float>> m_vDailyPlantRespiration;
+    std::vector<std::vector<float>> m_vDailyNpp;
+    std::vector<std::vector<float>> m_vSoilWater;
+    std::vector<std::vector<float>> m_vLaiState;
+
+    void saveBalance(int year, int doy);
 //    std::vector<float> m_vTsk;
     int startYear,endYear,startDoy,endDoy;
 

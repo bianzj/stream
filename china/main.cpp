@@ -20,6 +20,18 @@
 
 int main(int argc,char* argv[])
 {
+    const std::string defaultInput = "/home/hero/data/stream/input-1km-china-local.txt";
+    const std::string infilepath = argc > 1 ? argv[1] : defaultInput;
+    if (argc > 2) {
+        setenv("STREAM_OUTPUT_DIR", argv[2], 1);
+    }
+    std::ifstream inputCheck(infilepath);
+    if (!inputCheck) {
+        std::cerr << "Unable to open input metadata file: " << infilepath << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [metadata-file] [output-directory]" << std::endl;
+        return 1;
+    }
+
     GDALAllRegister();
     CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO");
 
@@ -30,8 +42,6 @@ int main(int argc,char* argv[])
 //-----------------------------------------------
 // huabei area: 1km: width 400-500 180-280 *25
 //-----------------------------------------------
-    std::string infilepath = "/home/hero/data/stream/input-1km-china-local.txt";
-
     Engine engine;
     engine.initProject(infilepath);
     engine.run();
@@ -50,4 +60,3 @@ return 0;
 
 
 
- 

@@ -2,6 +2,7 @@
 #include <iostream>
 #include "model.h"
 #include <complex>
+#include <limits>
 
 #include "fileio.h"
 
@@ -178,7 +179,7 @@ void Model::inputGeoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelI
     }
 
     int pos_leftup = height1 * width + width1;
-    int pos_rightdown = height2 * width + width2;
+    int pos_rightdown = (height2 - 1) * width + (width2 - 1);
     fileio->m_startlat_region = fileio->m_vLat[pos_leftup];
     fileio->m_endlat_region = fileio->m_vLat[pos_rightdown];
     fileio->m_startlon_region = fileio->m_vLon[pos_leftup];
@@ -249,7 +250,7 @@ void Model::inputGeoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelI
     }
 
     //初始化 m_vPos 向量，长度为图像的总像素数，初始值为 -1。
-    fileio->m_vPos = std::vector<uint32_t>(fileio->m_width * fileio->m_height, -1);
+    fileio->m_vPos = std::vector<int32_t>(fileio->m_width * fileio->m_height, -1);
     for (int kwidth = width1; kwidth < width2; kwidth++) {
         for (int kheight = height1; kheight < height2; kheight++) {
 
@@ -358,7 +359,7 @@ void Model::inputGeoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelI
     fileio->m_width_region = (fileio->m_areakey == 0) ? width : endWidth - startWidth;
     fileio->m_height_region = (fileio->m_areakey == 0) ? height : endHeight - startHeight;
 
-    fileio->m_vPos = std::vector<uint32_t>(width * height, -1);
+    fileio->m_vPos = std::vector<int32_t>(width * height, -1);
 
     // 统一计算区域边界
     const int pos_leftup = (fileio->m_areakey == 0) ?
@@ -366,7 +367,7 @@ void Model::inputGeoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<ModelI
         fileio->m_startheight * width + fileio->m_startwidth;
     const int pos_rightdown = (fileio->m_areakey == 0) ?
         (endHeight - 1) * width + (endWidth - 1) :
-        fileio->m_endheight * width + fileio->m_endwidth;
+        (fileio->m_endheight - 1) * width + (fileio->m_endwidth - 1);
 
     fileio->m_startlat_region = fileio->m_vLat[pos_leftup];
     fileio->m_endlat_region = fileio->m_vLat[pos_rightdown];
@@ -436,6 +437,7 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
     fileio->m_vSM.clear();
     fileio->m_vRin.clear();
     fileio->m_vRli.clear();
+    fileio->m_vPrecipitation.clear();
     fileio->m_vT.clear();
     fileio->m_vU.clear();
     fileio->m_vP.clear();
@@ -447,6 +449,7 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
     int width = fileio->m_width;
     int height = fileio->m_height;
     int meteowidth = fileio->m_width_meteo;
+    int meteoheight = fileio->m_height_meteo;
 
     float step = fileio->step_global2meteo;
     int offset_width = (int)ceil((fileio->m_startlon - fileio->m_startlon_meteo) / ((fileio->m_endlon_meteo - fileio->m_startlon_meteo) / fileio->m_width_meteo));
@@ -460,9 +463,19 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
         int kheight = pixelio->k_height;
         int kwidth_meteo = kwidth * step + offset_width;
         int kheight_meteo = kheight * step + offset_height;
+        kwidth_meteo = std::clamp(kwidth_meteo, 0, fileio->m_width_meteo - 1);
+        kheight_meteo = std::clamp(kheight_meteo, 0, fileio->m_height_meteo - 1);
+
         int k_pos = kheight * width + kwidth;   //高分辨率中的位置
         int k_meteopos = kheight_meteo * meteowidth + kwidth_meteo;   //低分辨率中的位置
 
+        // Keep the model state before loading today's measurement/ERA5
+        // products.  This is the forecast source when requested.
+        const float modelLai = pixelio->m_pInputset->canopy.lai;
+        const float modelSoilMoisture = pixelio->m_pInputset->soilset.SMC;
+
+        float laiObservation = modelLai;
+        bool hasLaiObservation = false;
         if(fileio->m_islai==1){
             double trans_lai[6];
             std::string proj_lai = fileio->proj_meteo;
@@ -475,16 +488,63 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
             int col_lai = col_global2lai + kwidth; // 研究区在lai图像的列号
             int row_lai = row_global2lai + kheight; // 研究区在lai图像的行号
             int k_pos_lai = row_lai * width_lai + col_lai;
-            pixelio->m_pInputset->canopy.lai = fileio->m_vLai[k_pos_lai]/1000.0;
+            if (k_pos_lai >= 0 && k_pos_lai < static_cast<int>(fileio->m_vLai.size())) {
+                laiObservation = fileio->m_vLai[k_pos_lai] / 1000.0f;
+                hasLaiObservation = std::isfinite(laiObservation) &&
+                                    laiObservation >= 0.0f && laiObservation <= 25.0f;
+            }
         }else{
-            pixelio->m_pInputset->canopy.lai = fileio->m_vLai[k_meteopos];
+            if (k_meteopos >= 0 && k_meteopos < static_cast<int>(fileio->m_vLai.size())) {
+                laiObservation = fileio->m_vLai[k_meteopos];
+                hasLaiObservation = std::isfinite(laiObservation) &&
+                                    laiObservation >= 0.0f && laiObservation <= 25.0f;
+            }
         }
 
+        float soilMoistureObservation = modelSoilMoisture;
+        bool hasSoilMoistureObservation = false;
         if(fileio->m_issm ==1){
-            pixelio->m_pInputset->soilset.SMC = fileio->m_vSM[k_pos];
+            if (k_pos >= 0 && k_pos < static_cast<int>(fileio->m_vSM.size())) {
+                soilMoistureObservation = fileio->m_vSM[k_pos];
+                hasSoilMoistureObservation = std::isfinite(soilMoistureObservation) &&
+                                             soilMoistureObservation >= 0.0f &&
+                                             soilMoistureObservation <= 1.0f;
+            }
         }else{
-            pixelio->m_pInputset->soilset.SMC = fileio->m_vSM[k_meteopos];
+            if (k_meteopos >= 0 && k_meteopos < static_cast<int>(fileio->m_vSM.size())) {
+                soilMoistureObservation = fileio->m_vSM[k_meteopos];
+                hasSoilMoistureObservation = std::isfinite(soilMoistureObservation) &&
+                                             soilMoistureObservation >= 0.0f &&
+                                             soilMoistureObservation <= 1.0f;
+            }
         }
+
+        // Always calculate the optional analysis from today's observation and
+        // the retained model forecast.  The selected source below determines
+        // what actually enters the physical model.
+        const float missingObservation = std::numeric_limits<float>::quiet_NaN();
+        float laiAnalysis = modelLai;
+        float soilMoistureAnalysis = modelSoilMoisture;
+        fileio->assimilatePixelState(kpixel,
+                                     hasLaiObservation ? laiObservation : missingObservation,
+                                     hasSoilMoistureObservation ? soilMoistureObservation : missingObservation,
+                                     modelLai,
+                                     modelSoilMoisture,
+                                     laiAnalysis,
+                                     soilMoistureAnalysis);
+
+        const bool useAssimilatedLai = fileio->m_assimilationEnabled &&
+                                       fileio->m_laiSource == StateSource::Assimilation;
+        const bool useAssimilatedSoil = fileio->m_assimilationEnabled &&
+                                        fileio->m_soilMoistureSource == StateSource::Assimilation;
+        pixelio->m_pInputset->canopy.lai =
+            fileio->m_laiSource == StateSource::Model ? modelLai :
+            useAssimilatedLai ? laiAnalysis :
+            hasLaiObservation ? laiObservation : modelLai;
+        pixelio->m_pInputset->soilset.SMC =
+            fileio->m_soilMoistureSource == StateSource::Model ? modelSoilMoisture :
+            useAssimilatedSoil ? soilMoistureAnalysis :
+            hasSoilMoistureObservation ? soilMoistureObservation : modelSoilMoisture;
 
 
         modelio->m_pDefined->m_soilopt.bsm(modelio->m_pDefined->m_optCoeff, modelio->m_pDefined->m_soilset.bsm,
@@ -532,6 +592,24 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
 
         modelio->m_isnodefirst = true;
         pixelio->m_pInputset->vMeteo.clear();
+        const auto precipitationAt = [&](int node) -> float {
+            if (!fileio->m_precipitationAvailable ||
+                node < 0 || node >= static_cast<int>(fileio->m_vPrecipitation.size())) {
+                return 0.0f;
+            }
+            const std::vector<float> &band = fileio->m_vPrecipitation[node];
+            if (fileio->m_precipitationWidth == meteowidth &&
+                fileio->m_precipitationHeight == meteoheight &&
+                k_meteopos >= 0 && k_meteopos < static_cast<int>(band.size())) {
+                return band[k_meteopos];
+            }
+            if (fileio->m_precipitationWidth == width &&
+                fileio->m_precipitationHeight == height &&
+                k_pos >= 0 && k_pos < static_cast<int>(band.size())) {
+                return band[k_pos];
+            }
+            return 0.0f;
+        };
         for (int knode = 0; knode < fileio->m_node; knode++) {
             if (fileio->step_global2meteo < 0.1) {
                 float metau = 0.0, metap = 0.0, metata = 0.0, metaea = 0.0, metarin = 0.0, metarli = 0.0, weight = 0.0;
@@ -543,7 +621,7 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
                         int ni = kwidth_meteo + i;
                         int nj = kheight_meteo + j;
 
-                        if (ni >= 0 && ni < meteowidth && nj >= 0 && nj < meteowidth) {
+                        if (ni >= 0 && ni < meteowidth && nj >= 0 && nj < meteoheight) {
                             float distance = sqrt(
                                 pow(kwidth * step + offset_width - ni, 2) +
                                 pow(kheight * step + offset_height - nj, 2));
@@ -594,6 +672,7 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
                     fileio->m_vT[knode], metau, metata, metaea,
                     metap, metarin, metarli
                 };
+                meteo.precipitation = precipitationAt(knode);
                 pixelio->m_pInputset->vMeteo.push_back(meteo);
             } else {
                 float ea = SCI::es_fun(fileio->m_vEa[knode][k_meteopos] - 273.15);
@@ -602,6 +681,7 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
                     fileio->m_vP[knode][k_meteopos], fileio->m_vRin[knode][k_meteopos],
                     fileio->m_vRli[knode][k_meteopos]
                 };
+                meteo.precipitation = precipitationAt(knode);
                 pixelio->m_pInputset->vMeteo.push_back(meteo);
             }
 

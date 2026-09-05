@@ -32,6 +32,8 @@ void Evapo::evapotranspiration(std::shared_ptr<PixelIO> pixelio) {
         Tc = thermal.Tleafsunlit;         // 阳生叶片温度(K)
         ra = resist.raa_leaf;             // 叶片边界层阻力(s/m)
         rs = biostate.rssunlit;           // 阳生叶片气孔阻力(s/m)
+                ra = std::max(ra, 1e-3f);
+rs = std::max(rs, 1e-3f);
         lambda = (2.501 - 0.002361 * (Tc - 273.15)) * 1E6;  // 汽化潜热(J/kg)
         ei = SCI::es_fun(Tc - 273.15);    // 叶片温度下的饱和水汽压(kPa)
         qi = ei * e_to_q;                 // 饱和比湿(kg/kg)
@@ -47,6 +49,8 @@ void Evapo::evapotranspiration(std::shared_ptr<PixelIO> pixelio) {
         Tc = thermal.Tleafshaded;     // 阴生叶片温度(K)
         ra = resist.raa_leaf;         // 叶片边界层阻力(s/m)
         rs = biostate.rsshaded;       // 阴生叶片气孔阻力(s/m)
+        ra = std::max(ra, 1e-3f);
+        rs = std::max(rs, 1e-3f);
         lambda = (2.501 - 0.002361 * (Tc - 273.15)) * 1E6;
         ei = SCI::es_fun(Tc - 273.15);
         qi = ei * e_to_q;
@@ -62,6 +66,8 @@ void Evapo::evapotranspiration(std::shared_ptr<PixelIO> pixelio) {
     Tc = thermal.Tsoilsunlit;       // 光照土壤温度(K)
     ra = resist.raa_soil;           // 土壤边界层阻力(s/m)
     rs = biostate.rss;              // 土壤表面阻力(s/m)
+    ra = std::max(ra, 1e-3f);
+    rs = std::max(rs, 1e-3f);
     lambda = (2.501 - 0.002361 * (Tc - 273.15)) * 1E6;
     ei = SCI::es_fun(Tc - 273.15);  // 土壤温度饱和水汽压
     qi = ei * e_to_q;
@@ -78,6 +84,8 @@ void Evapo::evapotranspiration(std::shared_ptr<PixelIO> pixelio) {
     Tc = thermal.Tsoilshaded;       // 阴影土壤温度(K)
     ra = resist.raa_soil;           // 土壤边界层阻力(s/m)
     rs = biostate.rss;               // 土壤表面阻力(s/m)
+    ra = std::max(ra, 1e-3f);
+    rs = std::max(rs, 1e-3f);
     lambda = (2.501 - 0.002361 * (Tc - 273.15)) * 1E6;
     ei = SCI::es_fun(Tc - 273.15);
     qi = ei * e_to_q;
