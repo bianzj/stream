@@ -1,4 +1,5 @@
 #include "fileio.h"
+#include <algorithm>
 
 #include <algorithm>
 #include <cctype>

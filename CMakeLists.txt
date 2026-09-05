@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.27)
-project(stream1.0)
+project(stream1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -60,7 +60,14 @@ add_executable(stream
 )
 
 find_package(GDAL CONFIG REQUIRED)
+find_package(HDF5 REQUIRED COMPONENTS C CXX)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(NETCDF REQUIRED IMPORTED_TARGET netcdf)
 
-target_link_libraries(stream PRIVATE GDAL::GDAL)
+target_link_libraries(stream PRIVATE
+        GDAL::GDAL
+        HDF5::HDF5
+        PkgConfig::NETCDF
+)
 
 
