@@ -14,6 +14,7 @@
 #include "leafopt.h"
 #include "geometry.h"
 #include "balance.h"
+#include "growth.h"
 
 
 class Model
@@ -68,6 +69,7 @@ public:
     BioChemical m_bio;
     Geometry m_geometry;
     WaterCarbonBalance m_balance;
+    Growth m_growth;
 
 
 

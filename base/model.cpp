@@ -469,12 +469,12 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
         int k_pos = kheight * width + kwidth;   //高分辨率中的位置
         int k_meteopos = kheight_meteo * meteowidth + kwidth_meteo;   //低分辨率中的位置
 
-        // Keep the model state before loading today's measurement/ERA5
-        // products.  This is the forecast source when requested.
-        const float modelLai = pixelio->m_pInputset->canopy.lai;
+        // Keep the selected state from the previous day. The generic crop
+        // prior below will replace only crop pixels before EnKF forecasting.
+        const float retainedLai = pixelio->m_pInputset->canopy.lai;
         const float modelSoilMoisture = pixelio->m_pInputset->soilset.SMC;
 
-        float laiObservation = modelLai;
+        float laiObservation = retainedLai;
         bool hasLaiObservation = false;
         if(fileio->m_islai==1){
             double trans_lai[6];
@@ -519,6 +519,31 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
             }
         }
 
+        // A daily crop forecast is available even when detailed crop type,
+        // irrigation, and local crop calendars are missing. Use the forcing
+        // temperature at this pixel and today's observed SM when available;
+        // sparse LAI observations will be applied below by EnKF or directly.
+        float meanAirTemperatureK = 0.0f;
+        int temperatureCount = 0;
+        for (const std::vector<float>& band : fileio->m_vTa) {
+            if (k_meteopos >= 0 && k_meteopos < static_cast<int>(band.size()) &&
+                std::isfinite(band[k_meteopos])) {
+                meanAirTemperatureK += band[k_meteopos];
+                ++temperatureCount;
+            }
+        }
+        const float meanAirTemperatureC = temperatureCount > 0
+                                              ? meanAirTemperatureK /
+                                                    static_cast<float>(temperatureCount) -
+                                                    273.15f
+                                              : 15.0f;
+        const float cropSoilMoisture = hasSoilMoistureObservation
+                                           ? soilMoistureObservation
+                                           : modelSoilMoisture;
+        m_growth.advance(pixelio, year, doy, meanAirTemperatureC,
+                          cropSoilMoisture);
+        const float modelLai = pixelio->m_pInputset->canopy.lai;
+
         // Always calculate the optional analysis from today's observation and
         // the retained model forecast.  The selected source below determines
         // what actually enters the physical model.
@@ -538,13 +563,29 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
         const bool useAssimilatedSoil = fileio->m_assimilationEnabled &&
                                         fileio->m_soilMoistureSource == StateSource::Assimilation;
         pixelio->m_pInputset->canopy.lai =
-            fileio->m_laiSource == StateSource::Model ? modelLai :
+            fileio->m_laiSource == StateSource::Model ||
+            fileio->m_laiSource == StateSource::CropModel ? modelLai :
             useAssimilatedLai ? laiAnalysis :
             hasLaiObservation ? laiObservation : modelLai;
-        pixelio->m_pInputset->soilset.SMC =
+        const float selectedSoilMoisture =
             fileio->m_soilMoistureSource == StateSource::Model ? modelSoilMoisture :
             useAssimilatedSoil ? soilMoistureAnalysis :
             hasSoilMoistureObservation ? soilMoistureObservation : modelSoilMoisture;
+        pixelio->m_pInputset->soilset.SMC = selectedSoilMoisture;
+
+        // Keep the bucket and the intermittent observed/analysed state
+        // synchronized at the start of a day. Missing observations leave the
+        // water balance forecast untouched.
+        const bool selectedObservedSoil =
+            hasSoilMoistureObservation &&
+            (fileio->m_soilMoistureSource == StateSource::Observation ||
+             (fileio->m_soilMoistureSource == StateSource::Assimilation &&
+              !fileio->m_assimilationEnabled));
+        const bool selectedAnalysedSoil = hasSoilMoistureObservation &&
+                                          useAssimilatedSoil;
+        if (selectedObservedSoil || selectedAnalysedSoil) {
+            m_balance.scheduleSoilMoistureObservation(pixelio, selectedSoilMoisture);
+        }
 
 
         modelio->m_pDefined->m_soilopt.bsm(modelio->m_pDefined->m_optCoeff, modelio->m_pDefined->m_soilset.bsm,
@@ -554,7 +595,9 @@ int Model::inputMeteoData(std::shared_ptr<FileIO> &fileio, std::shared_ptr<Model
             pixelio->m_pInputset->canopy.lai = 0;
         }
 
-        if (pixelio->m_pInputset->canopy.lai <= 0) {
+        const bool cropDormancyState = fileio->m_cropModelEnabled &&
+                                        pixelio->m_pDynamicVariable->crop.isCrop;
+        if (pixelio->m_pInputset->canopy.lai <= 0 && !cropDormancyState) {
             switch (pixelio->m_pInputset->canopy.type) {
                 case 6:
                 case 7:

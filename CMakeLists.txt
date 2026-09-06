@@ -29,6 +29,7 @@ add_executable(stream
         base/fileio.h
         base/leafopt.h
         base/growth.h
+        base/growth.cpp
         base/pixelio.cpp
         base/pixelio.h
         base/rt.cpp
@@ -69,5 +70,4 @@ target_link_libraries(stream PRIVATE
         HDF5::HDF5
         PkgConfig::NETCDF
 )
-
 

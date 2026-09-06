@@ -41,10 +41,20 @@ STREAM_SOIL_MOISTURE_SOURCE=observation
 ```
 
 Accepted values are `observation` (measured/ERA5), `model` (the retained
-model state), and `assimilation` (the EnKF analysis). Numeric values `0`, `1`,
-and `2` are also accepted. `STREAM_SM_SOURCE` is an alias for the soil
+model state), `crop_model` (the generic crop prior), and `assimilation` (the
+EnKF analysis). Numeric values `0`, `1`, `3`, and `2` are also accepted.
+`STREAM_SM_SOURCE` is an alias for the soil
 moisture setting. If `assimilation` is selected while EnKF is disabled, the
 corresponding variable falls back to measured/ERA5 data.
+
+The generic crop prior is enabled with `STREAM_CROP_MODEL_ENABLED=1` (it is
+also enabled automatically by `STREAM_LAI_SOURCE=crop_model`). It treats crop
+pixels as one robust functional type, uses a default sowing date and
+temperature accumulation, and applies soil-moisture stress. The main settings
+are `STREAM_CROP_SOWING_DOY`, `STREAM_CROP_BASE_TEMPERATURE_C`,
+`STREAM_CROP_EMERGENCE_GDD`, `STREAM_CROP_PEAK_GDD`,
+`STREAM_CROP_MATURITY_GDD`, `STREAM_CROP_MAX_LAI`, and
+`STREAM_CROP_MIN_LAI`.
 
 ## Optional water and carbon balance
 
@@ -65,6 +75,10 @@ STREAM_BALANCE_SLA=0.02
 STREAM_BALANCE_LEAF_CARBON_FRACTION=0.45
 STREAM_BALANCE_LEAF_ALLOCATION=0.40
 STREAM_BALANCE_LEAF_TURNOVER=0.01
+STREAM_BALANCE_CANOPY_STORAGE_PER_LAI=0.20
+STREAM_BALANCE_CANOPY_STORAGE_BASE=0.0
+STREAM_BALANCE_FIELD_CAPACITY=0.35
+STREAM_BALANCE_DRAINAGE_RATE=0.20
 ```
 
 Precipitation is optional and is never inferred. Set
@@ -81,7 +95,12 @@ the normal `output/<year>/<DDD>/` directory:
 ```text
 et_daily_sim.h5                  # mm/day
 precipitation_daily_sim.h5       # mm/day
+interception_daily_sim.h5         # mm/day retained by canopy
+throughfall_daily_sim.h5          # mm/day reaching soil surface
+infiltration_daily_sim.h5         # mm/day entering soil bucket
 runoff_daily_sim.h5              # mm/day
+drainage_daily_sim.h5             # mm/day leaving root zone
+assimilation_water_increment_daily_sim.h5 # mm/day from SM correction
 gpp_daily_sim.h5                 # g C m-2/day
 plant_respiration_daily_sim.h5   # g C m-2/day
 npp_daily_sim.h5                 # g C m-2/day
@@ -89,7 +108,9 @@ soil_water_sim.h5                # root-zone mm at end of day
 lai_state_sim.h5                 # LAI at end of day
 ```
 
-This is a deliberately simple preparatory balance. A production water/carbon
-budget still needs rainfall partitioning, multilayer soil hydraulics,
-infiltration/percolation, runoff parameterisation, litter and soil
-respiration, and calibrated canopy allocation parameters.
+This remains a deliberately simple balance. It provides per-grid-cell
+rainfall partitioning and bucket overflow runoff, but not routed streamflow.
+Daily precipitation is in millimetres per forcing step. If ERA5 `tp` is used,
+convert its metre units to millimetres first. A production water/carbon budget
+still needs multilayer soil hydraulics, rainfall intensity, runoff routing,
+litter and soil respiration, and calibrated canopy allocation parameters.

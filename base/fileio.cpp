@@ -140,6 +140,10 @@ StateSource parseStateSource(const std::string& raw, StateSource fallback)
         value == "simulated") {
         return StateSource::Model;
     }
+    if (value == "3" || value == "crop" || value == "crop_model" ||
+        value == "growth" || value == "wofost" || value == "glam") {
+        return StateSource::CropModel;
+    }
     if (value == "2" || value == "assimilation" || value == "assimilated" ||
         value == "analysis" || value == "enkf") {
         return StateSource::Assimilation;
@@ -159,6 +163,7 @@ const char* stateSourceName(StateSource source)
 {
     switch (source) {
     case StateSource::Model: return "model";
+    case StateSource::CropModel: return "crop_model";
     case StateSource::Assimilation: return "assimilation";
     case StateSource::Observation:
     default: return "measurement/ERA5";
@@ -348,12 +353,31 @@ void FileIO::readMeta(std::string infilepath)
          m_balanceLeafCarbonFraction = environmentFloat("STREAM_BALANCE_LEAF_CARBON_FRACTION", 0.45f);
          m_balanceLeafAllocation = environmentFloat("STREAM_BALANCE_LEAF_ALLOCATION", 0.40f);
          m_balanceLeafTurnover = environmentFloat("STREAM_BALANCE_LEAF_TURNOVER", 0.01f);
+         m_balanceCanopyStoragePerLai = environmentFloat(
+             "STREAM_BALANCE_CANOPY_STORAGE_PER_LAI", 0.20f);
+         m_balanceCanopyStorageBase = environmentFloat(
+             "STREAM_BALANCE_CANOPY_STORAGE_BASE", 0.0f);
+         m_balanceFieldCapacity = environmentFloat(
+             "STREAM_BALANCE_FIELD_CAPACITY", 0.35f);
+         m_balanceDrainageRate = environmentFloat(
+             "STREAM_BALANCE_DRAINAGE_RATE", 0.20f);
          m_precipitationFile = std::getenv("STREAM_PRECIPITATION_FILE") != nullptr
                                    ? std::getenv("STREAM_PRECIPITATION_FILE") : "";
          m_laiSource = environmentStateSource("STREAM_LAI_SOURCE", "STREAM_STATE_SOURCE",
                                               StateSource::Observation);
          m_soilMoistureSource = environmentStateSource(
              "STREAM_SOIL_MOISTURE_SOURCE", "STREAM_SM_SOURCE", StateSource::Observation);
+         m_cropModelEnabled = environmentBool(
+             "STREAM_CROP_MODEL_ENABLED", m_laiSource == StateSource::CropModel);
+         m_cropDefaultSowingDoy = environmentInt("STREAM_CROP_SOWING_DOY", 90);
+         m_cropBaseTemperature = environmentFloat("STREAM_CROP_BASE_TEMPERATURE_C", 5.0f);
+         m_cropEmergenceGdd = environmentFloat("STREAM_CROP_EMERGENCE_GDD", 100.0f);
+         m_cropPeakGdd = environmentFloat("STREAM_CROP_PEAK_GDD", 800.0f);
+         m_cropMaturityGdd = environmentFloat("STREAM_CROP_MATURITY_GDD", 1500.0f);
+         m_cropMaximumLai = environmentFloat("STREAM_CROP_MAX_LAI", 4.5f);
+         m_cropMinimumLai = environmentFloat("STREAM_CROP_MIN_LAI", 0.02f);
+         m_cropSoilWiltingPoint = environmentFloat("STREAM_CROP_SOIL_WILTING_POINT", 0.10f);
+         m_cropSoilFieldCapacity = environmentFloat("STREAM_CROP_SOIL_FIELD_CAPACITY", 0.35f);
          std::cout << "Water/carbon balance "
                    << (m_balanceEnabled ? "enabled" : "disabled") << std::endl;
          std::cout << "State sources: LAI=" << stateSourceName(m_laiSource)
@@ -923,7 +947,13 @@ void FileIO::saveBalance(int year, int doy)
     // g C m-2 for the day; LAI is dimensionless.
     save("et_daily_sim.h5", m_vDailyEt);
     save("precipitation_daily_sim.h5", m_vDailyPrecipitation);
+    save("interception_daily_sim.h5", m_vDailyInterception);
+    save("throughfall_daily_sim.h5", m_vDailyThroughfall);
+    save("infiltration_daily_sim.h5", m_vDailyInfiltration);
     save("runoff_daily_sim.h5", m_vDailyRunoff);
+    save("drainage_daily_sim.h5", m_vDailyDrainage);
+    save("assimilation_water_increment_daily_sim.h5",
+         m_vDailyAssimilationWaterIncrement);
     save("gpp_daily_sim.h5", m_vDailyGpp);
     save("plant_respiration_daily_sim.h5", m_vDailyPlantRespiration);
     save("npp_daily_sim.h5", m_vDailyNpp);

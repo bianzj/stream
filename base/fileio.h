@@ -28,6 +28,7 @@ enum class StateSource
 {
     Observation,
     Model,
+    CropModel,
     Assimilation
 };
 
@@ -174,15 +175,32 @@ public:
     float m_balanceLeafCarbonFraction = 0.45f;
     float m_balanceLeafAllocation = 0.40f;
     float m_balanceLeafTurnover = 0.01f;
+    float m_balanceCanopyStoragePerLai = 0.20f;
+    float m_balanceCanopyStorageBase = 0.0f;
+    float m_balanceFieldCapacity = 0.35f;
+    float m_balanceDrainageRate = 0.20f;
     std::string m_precipitationFile;
 
-    // Observation = measured/ERA5, Model = previous model state,
-    // Assimilation = EnKF analysis.
+    // Generic crop prior. It is deliberately usable without crop-specific
+    // calendars or irrigation maps; sparse LAI/SM observations can anchor it.
+    bool m_cropModelEnabled = false;
+    int m_cropDefaultSowingDoy = 90;
+    float m_cropBaseTemperature = 5.0f;
+    float m_cropEmergenceGdd = 100.0f;
+    float m_cropPeakGdd = 800.0f;
+    float m_cropMaturityGdd = 1500.0f;
+    float m_cropMaximumLai = 4.5f;
+    float m_cropMinimumLai = 0.02f;
+    float m_cropSoilWiltingPoint = 0.10f;
+    float m_cropSoilFieldCapacity = 0.35f;
+
+    // Observation = measured/ERA5, Model = retained STREAM state,
+    // CropModel = generic crop prior, Assimilation = EnKF analysis.
     StateSource m_laiSource = StateSource::Observation;
     StateSource m_soilMoistureSource = StateSource::Observation;
 
-    // Assimilation is read-only scaffolding for now.  No model state is
-    // changed until a future assimilation method explicitly consumes it.
+    // The observation archive is read-only; when enabled, EnKF analysis is
+    // applied only through the configured state sources.
     bool m_assimilationEnabled = false;
     bool m_assimilationReadOnly = true;
     std::string m_assimilationFile;
@@ -260,7 +278,12 @@ public:
     // Daily water/carbon balance products, one band per output image.
     std::vector<std::vector<float>> m_vDailyEt;
     std::vector<std::vector<float>> m_vDailyPrecipitation;
+    std::vector<std::vector<float>> m_vDailyInterception;
+    std::vector<std::vector<float>> m_vDailyThroughfall;
+    std::vector<std::vector<float>> m_vDailyInfiltration;
     std::vector<std::vector<float>> m_vDailyRunoff;
+    std::vector<std::vector<float>> m_vDailyDrainage;
+    std::vector<std::vector<float>> m_vDailyAssimilationWaterIncrement;
     std::vector<std::vector<float>> m_vDailyGpp;
     std::vector<std::vector<float>> m_vDailyPlantRespiration;
     std::vector<std::vector<float>> m_vDailyNpp;
@@ -273,7 +296,5 @@ public:
 
 
 };
-
-
 
 

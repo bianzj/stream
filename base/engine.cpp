@@ -37,7 +37,24 @@ void Engine::initProject(std::string infilepath) {
         m_fileio->m_balanceSpecificLeafArea,
         m_fileio->m_balanceLeafCarbonFraction,
         m_fileio->m_balanceLeafAllocation,
-        m_fileio->m_balanceLeafTurnover);
+        m_fileio->m_balanceLeafTurnover,
+        m_fileio->m_balanceCanopyStoragePerLai,
+        m_fileio->m_balanceCanopyStorageBase,
+        m_fileio->m_balanceFieldCapacity,
+        m_fileio->m_balanceDrainageRate,
+        m_fileio->m_cropModelEnabled);
+
+    m_model->m_growth.configure(
+        m_fileio->m_cropModelEnabled,
+        m_fileio->m_cropDefaultSowingDoy,
+        m_fileio->m_cropBaseTemperature,
+        m_fileio->m_cropEmergenceGdd,
+        m_fileio->m_cropPeakGdd,
+        m_fileio->m_cropMaturityGdd,
+        m_fileio->m_cropMaximumLai,
+        m_fileio->m_cropMinimumLai,
+        m_fileio->m_cropSoilWiltingPoint,
+        m_fileio->m_cropSoilFieldCapacity);
 
 
 }
@@ -259,7 +276,12 @@ void Engine::observe(int knode, bool outputOptical) {
 
     m_fileio->m_vDailyEt.clear();
     m_fileio->m_vDailyPrecipitation.clear();
+    m_fileio->m_vDailyInterception.clear();
+    m_fileio->m_vDailyThroughfall.clear();
+    m_fileio->m_vDailyInfiltration.clear();
     m_fileio->m_vDailyRunoff.clear();
+    m_fileio->m_vDailyDrainage.clear();
+    m_fileio->m_vDailyAssimilationWaterIncrement.clear();
     m_fileio->m_vDailyGpp.clear();
     m_fileio->m_vDailyPlantRespiration.clear();
     m_fileio->m_vDailyNpp.clear();
@@ -311,7 +333,12 @@ void Engine::observe(int knode, bool outputOptical) {
         const std::size_t imageSize = static_cast<std::size_t>(width) * height;
         m_fileio->m_vDailyEt.emplace_back(imageSize, 0.0f);
         m_fileio->m_vDailyPrecipitation.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vDailyInterception.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vDailyThroughfall.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vDailyInfiltration.emplace_back(imageSize, 0.0f);
         m_fileio->m_vDailyRunoff.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vDailyDrainage.emplace_back(imageSize, 0.0f);
+        m_fileio->m_vDailyAssimilationWaterIncrement.emplace_back(imageSize, 0.0f);
         m_fileio->m_vDailyGpp.emplace_back(imageSize, 0.0f);
         m_fileio->m_vDailyPlantRespiration.emplace_back(imageSize, 0.0f);
         m_fileio->m_vDailyNpp.emplace_back(imageSize, 0.0f);
@@ -364,7 +391,13 @@ void Engine::observe(int knode, bool outputOptical) {
                 m_modelio->m_vPixelio[i]->m_pDynamicVariable->balance;
             m_fileio->m_vDailyEt[0][pos] = balance.dailyEtMm;
             m_fileio->m_vDailyPrecipitation[0][pos] = balance.dailyPrecipitationMm;
+            m_fileio->m_vDailyInterception[0][pos] = balance.dailyInterceptionMm;
+            m_fileio->m_vDailyThroughfall[0][pos] = balance.dailyThroughfallMm;
+            m_fileio->m_vDailyInfiltration[0][pos] = balance.dailyInfiltrationMm;
             m_fileio->m_vDailyRunoff[0][pos] = balance.dailyRunoffMm;
+            m_fileio->m_vDailyDrainage[0][pos] = balance.dailyDrainageMm;
+            m_fileio->m_vDailyAssimilationWaterIncrement[0][pos] =
+                balance.dailyAssimilationWaterIncrementMm;
             m_fileio->m_vDailyGpp[0][pos] = balance.dailyGrossAssimilationGc;
             m_fileio->m_vDailyPlantRespiration[0][pos] = balance.dailyPlantRespirationGc;
             m_fileio->m_vDailyNpp[0][pos] = balance.dailyNetAssimilationGc;

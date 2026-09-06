@@ -212,6 +212,22 @@ struct Canopy
     float b;
 };
 
+// Lightweight state for a generic crop prior.  It intentionally uses a
+// small number of robust parameters so it can run when cultivar, irrigation,
+// and field-level management data are unavailable.
+struct CropState
+{
+    bool initialized = false;
+    bool isCrop = false;
+    int lastYear = 0;
+    int lastDoy = 0;
+    int sowingDoy = 90;
+    float gdd = 0.0f;
+    float stage = 0.0f;
+    float lai = 0.0f;
+    float biomassGc = 0.0f;
+};
+
 struct Urban
 {
     float bai;
@@ -442,18 +458,31 @@ struct BalanceState
 {
     bool initialized = false;
     float soilWaterMm = 0.0f;
+    float canopyWaterMm = 0.0f;
+    float soilWaterForecastMm = 0.0f;
+    float pendingSoilMoisture = -1.0f;
     float leafCarbonGc = 0.0f;
 
     float etMm = 0.0f;
     float precipitationMm = 0.0f;
+    float interceptionMm = 0.0f;
+    float throughfallMm = 0.0f;
+    float infiltrationMm = 0.0f;
     float runoffMm = 0.0f;
+    float drainageMm = 0.0f;
+    float assimilationWaterIncrementMm = 0.0f;
     float grossAssimilationGc = 0.0f;
     float plantRespirationGc = 0.0f;
     float netAssimilationGc = 0.0f;
 
     float dailyEtMm = 0.0f;
     float dailyPrecipitationMm = 0.0f;
+    float dailyInterceptionMm = 0.0f;
+    float dailyThroughfallMm = 0.0f;
+    float dailyInfiltrationMm = 0.0f;
     float dailyRunoffMm = 0.0f;
+    float dailyDrainageMm = 0.0f;
+    float dailyAssimilationWaterIncrementMm = 0.0f;
     float dailyGrossAssimilationGc = 0.0f;
     float dailyPlantRespirationGc = 0.0f;
     float dailyNetAssimilationGc = 0.0f;
@@ -488,6 +517,7 @@ struct Satellite
 struct DynamicVariable
 {
     BioState biostate;
+    CropState crop;
     BalanceState balance;
     Thermal thermal;
     Heatflux heatflux;

@@ -92,13 +92,20 @@ void EnsembleKalmanFilter::predict(PixelEnsemble& ensemble,
         return;
     }
 
-    // No rainfall/soil-water balance is available yet.  Until that module is
-    // added, persistence plus process noise is the explicit forecast model.
+    // Carry the ensemble anomalies around the host model's new forecast.
+    // This lets a crop prior or the water bucket evolve between intermittent
+    // LAI/soil-moisture observations instead of reverting to persistence.
+    const float previousLaiMean = mean(ensemble.lai);
+    const float previousSoilMoistureMean = mean(ensemble.soilMoisture);
     for (int member = 0; member < m_ensembleSize; ++member) {
-        ensemble.lai[member] = clampFinite(ensemble.lai[member] + laiNoise(m_generator),
+        ensemble.lai[member] = clampFinite(
+            safeLaiForecast + (ensemble.lai[member] - previousLaiMean) +
+                laiNoise(m_generator),
                                            0.0f, kMaximumLai);
         ensemble.soilMoisture[member] = clampFinite(
-            ensemble.soilMoisture[member] + soilMoistureNoise(m_generator),
+            safeSoilMoistureForecast +
+                (ensemble.soilMoisture[member] - previousSoilMoistureMean) +
+                soilMoistureNoise(m_generator),
             kMinimumSoilMoisture, kMaximumSoilMoisture);
     }
 }
